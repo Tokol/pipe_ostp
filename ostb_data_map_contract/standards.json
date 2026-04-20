@@ -1,0 +1,2698 @@
+{
+  "metadata": {
+    "source": "TOLERANSTABELL.xlsx",
+    "contract_version": "1.0.0",
+    "contract": {
+      "version": "1.0.0",
+      "schema": {
+        "$ref": "standards.schema.json",
+        "version": "1.0.0"
+      },
+      "execution_spec": {
+        "$ref": "standards.execution.json",
+        "version": "1.0.0"
+      },
+      "api_spec": {
+        "$ref": "standards.openapi.json",
+        "version": "1.0.0"
+      }
+    },
+    "schema": "standards.schema.json",
+    "execution_spec": "standards.execution.json",
+    "unit_default": "mm",
+    "status": "strict_excel_extraction",
+    "rules": [
+      "No guessed values",
+      "No derived plus/minus fields",
+      "Empty and ambiguous values omitted"
+    ]
+  },
+  "standards": [
+    {
+      "id": "1",
+      "sheet": "1",
+      "name": "EN 10217-7:2005 => EN ISO 1127",
+      "mode": "formula",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT100",
+          "system": "ISO",
+          "range_mm": [
+            16,
+            2030
+          ]
+        },
+        {
+          "code": "OT110",
+          "system": "NS",
+          "range_mm": [
+            22,
+            510
+          ]
+        }
+      ],
+      "entries": [],
+      "type": "pipe",
+      "diameter_tolerance": {
+        "mode": "formula",
+        "classes": {
+          "D3": {
+            "percent": 0.75,
+            "min_mm": 0.3,
+            "source_text": "D3    (± 0,75% min ± 0,3)"
+          },
+          "D2": {
+            "percent": 1,
+            "min_mm": 0.5,
+            "source_text": "D2    (± 1,0% min ± 0,5)"
+          },
+          "D4": {
+            "percent": 0.5,
+            "min_mm": 0.1,
+            "source_text": "D4    (± 0,5% min ± 0,1)"
+          }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "sheet": "2",
+      "name": "EN 10217-7:2005 => EN ISO 1127 Dubbeldimension",
+      "mode": "lookup",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT100",
+          "system": "ISO",
+          "range_mm": [
+            355.6,
+            508
+          ]
+        },
+        {
+          "code": "OT110",
+          "system": "NS",
+          "range_mm": [
+            355,
+            506
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 4,
+          "diameter_pair_mm": {
+            "a": 355,
+            "b": 355.6
+          }
+        },
+        {
+          "source_row": 5,
+          "diameter_pair_mm": {
+            "a": 355.6,
+            "b": 356
+          }
+        },
+        {
+          "source_row": 6,
+          "diameter_pair_mm": {
+            "a": 355.6,
+            "b": 358
+          }
+        },
+        {
+          "source_row": 7,
+          "diameter_pair_mm": {
+            "a": 405,
+            "b": 406.4
+          }
+        },
+        {
+          "source_row": 8,
+          "diameter_pair_mm": {
+            "a": 406,
+            "b": 406.4
+          }
+        },
+        {
+          "source_row": 9,
+          "diameter_pair_mm": {
+            "a": 406.4,
+            "b": 408
+          }
+        },
+        {
+          "source_row": 10,
+          "diameter_pair_mm": {
+            "a": 456,
+            "b": 457
+          }
+        },
+        {
+          "source_row": 11,
+          "diameter_pair_mm": {
+            "a": 457,
+            "b": 458
+          }
+        },
+        {
+          "source_row": 12,
+          "diameter_pair_mm": {
+            "a": 506,
+            "b": 508
+          }
+        },
+        {
+          "source_row": 13,
+          "diameter_pair_mm": {
+            "a": 606,
+            "b": 610
+          }
+        },
+        {
+          "source_row": 14,
+          "diameter_pair_mm": {
+            "a": 608,
+            "b": 610
+          }
+        },
+        {
+          "source_row": 15,
+          "diameter_pair_mm": {
+            "a": 708,
+            "b": 711
+          }
+        },
+        {
+          "source_row": 16,
+          "diameter_pair_mm": {
+            "a": 808,
+            "b": 813
+          }
+        }
+      ],
+      "type": "pipe",
+      "diameter_tolerance": {
+        "mode": "formula",
+        "classes": {
+          "D2": {
+            "percent": 1,
+            "min_mm": 0.5,
+            "source_text": "D2  ± 1,0% min ± 0,5"
+          }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "sheet": "3",
+      "name": "ASTM A312, ASTM A790 ja ASTM A928  => ASTM A999 ASTM A 358",
+      "mode": "lookup",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT120",
+          "system": "ANSI",
+          "range_inch": [
+            "1",
+            "16"
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 10,
+          "nominal_mm": 17.1,
+          "nominal_inch": "3/8",
+          "thickness": {
+            "nominal": {
+              "10s": {
+                "nominal_mm": 1.65
+              },
+              "40s": {
+                "nominal_mm": 2.31
+              }
+            }
+          }
+        },
+        {
+          "source_row": 11,
+          "nominal_mm": 21.3,
+          "nominal_inch": "1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.11
+              },
+              "40s": {
+                "nominal_mm": 2.77
+              }
+            }
+          }
+        },
+        {
+          "source_row": 12,
+          "nominal_mm": 26.7,
+          "nominal_inch": "3/4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.11
+              },
+              "40s": {
+                "nominal_mm": 2.87
+              }
+            }
+          }
+        },
+        {
+          "source_row": 13,
+          "nominal_mm": 33.4,
+          "nominal_inch": "1",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.378
+              }
+            }
+          }
+        },
+        {
+          "source_row": 14,
+          "nominal_mm": 42.16,
+          "nominal_inch": "1 1/4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.556
+              }
+            }
+          }
+        },
+        {
+          "source_row": 15,
+          "nominal_mm": 48.26,
+          "nominal_inch": "1 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.683
+              }
+            }
+          }
+        },
+        {
+          "source_row": 16,
+          "nominal_mm": 60.33,
+          "nominal_inch": "2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.912
+              }
+            }
+          }
+        },
+        {
+          "source_row": 17,
+          "nominal_mm": 73.02,
+          "nominal_inch": "2 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 5.156
+              }
+            }
+          }
+        },
+        {
+          "source_row": 18,
+          "nominal_mm": 88.9,
+          "nominal_inch": "3",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 5.486
+              }
+            }
+          }
+        },
+        {
+          "source_row": 19,
+          "nominal_mm": 101.6,
+          "nominal_inch": "3 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 5.74
+              }
+            }
+          }
+        },
+        {
+          "source_row": 20,
+          "nominal_mm": 114.3,
+          "nominal_inch": "4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 6.02
+              }
+            }
+          }
+        },
+        {
+          "source_row": 21,
+          "nominal_mm": 141.3,
+          "nominal_inch": "5",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.404
+              },
+              "40s": {
+                "nominal_mm": 6.553
+              }
+            }
+          }
+        },
+        {
+          "source_row": 22,
+          "nominal_mm": 168.27,
+          "nominal_inch": "6",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.404
+              },
+              "40s": {
+                "nominal_mm": 7.112
+              }
+            }
+          }
+        },
+        {
+          "source_row": 23,
+          "nominal_mm": 219.08,
+          "nominal_inch": "8",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.759
+              },
+              "40s": {
+                "nominal_mm": 8.179
+              }
+            }
+          }
+        },
+        {
+          "source_row": 24,
+          "nominal_mm": 273.05,
+          "nominal_inch": "10",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.404
+              },
+              "10s": {
+                "nominal_mm": 4.191
+              },
+              "40s": {
+                "nominal_mm": 9.271
+              }
+            }
+          }
+        },
+        {
+          "source_row": 25,
+          "nominal_mm": 323.85,
+          "nominal_inch": "12",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.962
+              },
+              "10s": {
+                "nominal_mm": 4.572
+              },
+              "40s": {
+                "nominal_mm": 9.53
+              }
+            }
+          }
+        },
+        {
+          "source_row": 26,
+          "nominal_mm": 355.6,
+          "nominal_inch": "14",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.962
+              },
+              "10s": {
+                "nominal_mm": 4.775
+              },
+              "40s": {
+                "nominal_mm": 9.53
+              }
+            }
+          }
+        },
+        {
+          "source_row": 27,
+          "nominal_mm": 406.4,
+          "nominal_inch": "16",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 4.191
+              },
+              "10s": {
+                "nominal_mm": 4.775
+              },
+              "40s": {
+                "nominal_mm": 9.53
+              }
+            }
+          }
+        }
+      ],
+      "type": "pipe"
+    },
+    {
+      "id": "3.1",
+      "sheet": "3.1",
+      "name": "ASTM A249 / A1016 ASTM A358",
+      "mode": "lookup",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT120",
+          "system": "ANSI",
+          "range_inch": [
+            "1",
+            "16"
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 20,
+          "nominal_mm": 17.1,
+          "nominal_inch": "3/8",
+          "thickness": {
+            "nominal": {
+              "10s": {
+                "nominal_mm": 1.65
+              },
+              "40s": {
+                "nominal_mm": 2.31
+              }
+            }
+          }
+        },
+        {
+          "source_row": 21,
+          "nominal_mm": 21.3,
+          "nominal_inch": "1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.11
+              },
+              "40s": {
+                "nominal_mm": 2.77
+              }
+            }
+          }
+        },
+        {
+          "source_row": 22,
+          "nominal_mm": 26.7,
+          "nominal_inch": "3/4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.11
+              },
+              "40s": {
+                "nominal_mm": 2.87
+              }
+            }
+          }
+        },
+        {
+          "source_row": 23,
+          "nominal_mm": 33.4,
+          "nominal_inch": "1",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.378
+              }
+            }
+          }
+        },
+        {
+          "source_row": 24,
+          "nominal_mm": 42.16,
+          "nominal_inch": "1 1/4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.556
+              }
+            }
+          }
+        },
+        {
+          "source_row": 25,
+          "nominal_mm": 48.26,
+          "nominal_inch": "1 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.683
+              }
+            }
+          }
+        },
+        {
+          "source_row": 26,
+          "nominal_mm": 60.33,
+          "nominal_inch": "2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.65
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              },
+              "40s": {
+                "nominal_mm": 3.912
+              }
+            }
+          }
+        },
+        {
+          "source_row": 27,
+          "nominal_mm": 73.02,
+          "nominal_inch": "2 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 5.156
+              }
+            }
+          }
+        },
+        {
+          "source_row": 28,
+          "nominal_mm": 88.9,
+          "nominal_inch": "3",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 5.486
+              }
+            }
+          }
+        },
+        {
+          "source_row": 29,
+          "nominal_mm": 101.6,
+          "nominal_inch": "3 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 5.74
+              }
+            }
+          }
+        },
+        {
+          "source_row": 30,
+          "nominal_mm": 114.3,
+          "nominal_inch": "4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              },
+              "40s": {
+                "nominal_mm": 6.02
+              }
+            }
+          }
+        },
+        {
+          "source_row": 31,
+          "nominal_mm": 141.3,
+          "nominal_inch": "5",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.404
+              },
+              "40s": {
+                "nominal_mm": 6.553
+              }
+            }
+          }
+        },
+        {
+          "source_row": 32,
+          "nominal_mm": 168.27,
+          "nominal_inch": "6",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.404
+              },
+              "40s": {
+                "nominal_mm": 7.112
+              }
+            }
+          }
+        },
+        {
+          "source_row": 33,
+          "nominal_mm": 219.08,
+          "nominal_inch": "8",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.759
+              },
+              "40s": {
+                "nominal_mm": 8.179
+              }
+            }
+          }
+        },
+        {
+          "source_row": 34,
+          "nominal_mm": 273.05,
+          "nominal_inch": "10",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.404
+              },
+              "10s": {
+                "nominal_mm": 4.191
+              },
+              "40s": {
+                "nominal_mm": 9.271
+              }
+            }
+          }
+        },
+        {
+          "source_row": 35,
+          "nominal_mm": 323.85,
+          "nominal_inch": "12",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.962
+              },
+              "10s": {
+                "nominal_mm": 4.572
+              },
+              "40s": {
+                "nominal_mm": 9.53
+              }
+            }
+          }
+        },
+        {
+          "source_row": 36,
+          "nominal_mm": 355.6,
+          "nominal_inch": "14",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.962
+              },
+              "10s": {
+                "nominal_mm": 4.775
+              },
+              "40s": {
+                "nominal_mm": 9.53
+              }
+            }
+          }
+        },
+        {
+          "source_row": 37,
+          "nominal_mm": 406.4,
+          "nominal_inch": "16",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 4.191
+              },
+              "10s": {
+                "nominal_mm": 4.775
+              },
+              "40s": {
+                "nominal_mm": 9.53
+              }
+            }
+          }
+        }
+      ],
+      "type": "pipe"
+    },
+    {
+      "id": "4",
+      "sheet": "4",
+      "name": "EN 10253-4:2008",
+      "mode": "hybrid",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT200",
+          "system": "ISO",
+          "range_mm": [
+            17.2,
+            406.4
+          ],
+          "radius": "1.5xD"
+        },
+        {
+          "code": "OT212",
+          "system": "NS",
+          "range_mm": [
+            18,
+            306
+          ],
+          "radius": "1.5xD"
+        },
+        {
+          "code": "OT214",
+          "system": "NS",
+          "range_mm": [
+            84,
+            408
+          ],
+          "radius": "D+100"
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 45,
+          "nominal_mm": 17.2,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 28,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 46,
+          "nominal_mm": 18,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 30,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 47,
+          "nominal_mm": 20,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 23,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 48,
+          "nominal_mm": 21.3,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 27.5,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 49,
+          "nominal_mm": 23,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 35,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 50,
+          "nominal_mm": 25,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 27.5,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 51,
+          "nominal_mm": 26.9,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 28.5,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 52,
+          "nominal_mm": 28,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 32.5,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 53,
+          "nominal_mm": 30,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 33.5,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 54,
+          "nominal_mm": 33.7,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 38,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 55,
+          "nominal_mm": 35,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 45,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 56,
+          "nominal_mm": 38,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 50,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 57,
+          "nominal_mm": 42.4,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 47.5,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 58,
+          "nominal_mm": 43,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 47.5,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 59,
+          "nominal_mm": 44.5,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 60,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 60,
+          "nominal_mm": 48.3,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 57,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 61,
+          "nominal_mm": 53,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 73,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 62,
+          "nominal_mm": 54,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 73,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 63,
+          "nominal_mm": 57,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 78,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 64,
+          "nominal_mm": 60.3,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 76,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 65,
+          "nominal_mm": 69,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 95,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 66,
+          "nominal_mm": 76.1,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 95,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 67,
+          "nominal_mm": 79,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 113,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 68,
+          "nominal_mm": 84,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 123,
+            "radius_d_plus_100_mm": 180,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 69,
+          "nominal_mm": 86,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 123,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 70,
+          "nominal_mm": 88.9,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 114,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 71,
+          "nominal_mm": 101.6,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 133,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 72,
+          "nominal_mm": 104,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 150,
+            "radius_d_plus_100_mm": 200,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 73,
+          "nominal_mm": 105,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 150,
+            "radius_d_plus_100_mm": 200,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 74,
+          "nominal_mm": 106,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 150,
+            "radius_d_plus_100_mm": 200,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 75,
+          "nominal_mm": 114.3,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 152,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 76,
+          "nominal_mm": 129,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 188,
+            "radius_d_plus_100_mm": 225,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 77,
+          "nominal_mm": 131,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 188,
+            "radius_d_plus_100_mm": 225
+          }
+        },
+        {
+          "source_row": 78,
+          "nominal_mm": 139.7,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 190,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 79,
+          "nominal_mm": 154,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 225,
+            "radius_d_plus_100_mm": 250,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 80,
+          "nominal_mm": 156,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 225,
+            "radius_d_plus_100_mm": 250,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 81,
+          "nominal_mm": 158,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 225,
+            "radius_d_plus_100_mm": 250,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 82,
+          "nominal_mm": 168.3,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 229,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 83,
+          "nominal_mm": 204,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 300,
+            "radius_d_plus_100_mm": 300,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 84,
+          "nominal_mm": 205,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 300,
+            "radius_d_plus_100_mm": 300,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 85,
+          "nominal_mm": 206,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 300,
+            "radius_d_plus_100_mm": 300,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 86,
+          "nominal_mm": 208,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 300,
+            "radius_d_plus_100_mm": 300,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 87,
+          "nominal_mm": 219.1,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 305,
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 88,
+          "nominal_mm": 254,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 375,
+            "radius_d_plus_100_mm": 350,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 89,
+          "nominal_mm": 255,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 375,
+            "radius_d_plus_100_mm": 350,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 90,
+          "nominal_mm": 256,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 375,
+            "radius_d_plus_100_mm": 350,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 91,
+          "nominal_mm": 258,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 375,
+            "radius_d_plus_100_mm": 350,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 92,
+          "nominal_mm": 273,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 381,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 93,
+          "nominal_mm": 304,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 450,
+            "radius_d_plus_100_mm": 400,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 94,
+          "nominal_mm": 305,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 450,
+            "radius_d_plus_100_mm": 400,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 95,
+          "nominal_mm": 306,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 450,
+            "radius_d_plus_100_mm": 400,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 96,
+          "nominal_mm": 308,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 450,
+            "radius_d_plus_100_mm": 400,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 97,
+          "nominal_mm": 323.9,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 457,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 98,
+          "nominal_mm": 355,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 525,
+            "radius_d_plus_100_mm": 450,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 99,
+          "nominal_mm": 355.6,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 533,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 100,
+          "nominal_mm": 356,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 525,
+            "radius_d_plus_100_mm": 450,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 101,
+          "nominal_mm": 358,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 525,
+            "radius_d_plus_100_mm": 450,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 102,
+          "nominal_mm": 406,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 600,
+            "radius_d_plus_100_mm": 500,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 103,
+          "nominal_mm": 406.4,
+          "standard": "ISO 200",
+          "geometry": {
+            "radius_1_5d_mm": 610,
+            "f_tolerance_mm": 5
+          }
+        },
+        {
+          "source_row": 104,
+          "nominal_mm": 408,
+          "standard": "NS 212",
+          "geometry": {
+            "radius_1_5d_mm": 600,
+            "radius_d_plus_100_mm": 500,
+            "f_tolerance_mm": 5
+          }
+        }
+      ],
+      "type": "fitting",
+      "diameter_tolerance": {
+        "mode": "formula",
+        "classes": {
+          "D2": {
+            "percent": 1,
+            "min_mm": 0.5,
+            "source_text": "D2  ± 1,0% min ± 0,5"
+          },
+          "D3": {
+            "percent": 0.75,
+            "min_mm": 0.3,
+            "source_text": "D3  ± 0,75% min ± 0,3"
+          },
+          "D4": {
+            "percent": 0.5,
+            "min_mm": 0.1,
+            "source_text": "D4  ± 0,5% min ± 0,1"
+          }
+        }
+      }
+    },
+    {
+      "id": "5",
+      "sheet": "5",
+      "name": "ASTM A 403 -07 => ASME B16.9-2007",
+      "mode": "lookup",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT226",
+          "system": "ASTM",
+          "range_inch": [
+            "1",
+            "16"
+          ],
+          "radius": "1.5xD"
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 10,
+          "nominal_mm": 33.4,
+          "nominal_inch": "1",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.651
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              }
+            }
+          }
+        },
+        {
+          "source_row": 11,
+          "nominal_mm": 42.16,
+          "nominal_inch": "1 1/4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.651
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              }
+            }
+          }
+        },
+        {
+          "source_row": 12,
+          "nominal_mm": 48.26,
+          "nominal_inch": "1 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.651
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              }
+            }
+          }
+        },
+        {
+          "source_row": 13,
+          "nominal_mm": 60.33,
+          "nominal_inch": "2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 1.651
+              },
+              "10s": {
+                "nominal_mm": 2.769
+              }
+            }
+          }
+        },
+        {
+          "source_row": 14,
+          "nominal_mm": 73.02,
+          "nominal_inch": "2 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              }
+            }
+          }
+        },
+        {
+          "source_row": 15,
+          "nominal_mm": 88.9,
+          "nominal_inch": "3",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              }
+            }
+          }
+        },
+        {
+          "source_row": 16,
+          "nominal_mm": 101.6,
+          "nominal_inch": "3 1/2",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              }
+            }
+          }
+        },
+        {
+          "source_row": 17,
+          "nominal_mm": 114.3,
+          "nominal_inch": "4",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.108
+              },
+              "10s": {
+                "nominal_mm": 3.048
+              }
+            }
+          }
+        },
+        {
+          "source_row": 18,
+          "nominal_mm": 141.3,
+          "nominal_inch": "5",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.404
+              }
+            }
+          }
+        },
+        {
+          "source_row": 19,
+          "nominal_mm": 168.27,
+          "nominal_inch": "6",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.404
+              }
+            }
+          }
+        },
+        {
+          "source_row": 20,
+          "nominal_mm": 219.08,
+          "nominal_inch": "8",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 2.769
+              },
+              "10s": {
+                "nominal_mm": 3.759
+              }
+            }
+          }
+        },
+        {
+          "source_row": 21,
+          "nominal_mm": 273.05,
+          "nominal_inch": "10",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.404
+              },
+              "10s": {
+                "nominal_mm": 4.191
+              }
+            }
+          }
+        },
+        {
+          "source_row": 22,
+          "nominal_mm": 323.85,
+          "nominal_inch": "12",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.962
+              },
+              "10s": {
+                "nominal_mm": 4.572
+              }
+            }
+          }
+        },
+        {
+          "source_row": 23,
+          "nominal_mm": 355.6,
+          "nominal_inch": "14",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 3.962
+              },
+              "10s": {
+                "nominal_mm": 4.775
+              }
+            }
+          }
+        },
+        {
+          "source_row": 24,
+          "nominal_mm": 406.4,
+          "nominal_inch": "16",
+          "thickness": {
+            "nominal": {
+              "5s": {
+                "nominal_mm": 4.191
+              },
+              "10s": {
+                "nominal_mm": 4.775
+              }
+            }
+          }
+        }
+      ],
+      "type": "fitting"
+    },
+    {
+      "id": "6",
+      "sheet": "6",
+      "name": "EN 10253-4:2008 ASTM A 403 -07 => ASME B16.9-2007 Hydro (Equal)",
+      "mode": "hybrid",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT300",
+          "system": "ISO",
+          "range_mm": [
+            33.7,
+            219.1
+          ]
+        },
+        {
+          "code": "OT310",
+          "system": "NS",
+          "range_mm": [
+            38,
+            206
+          ]
+        },
+        {
+          "code": "OT320",
+          "system": "ANSI",
+          "range_mm": [
+            33.4,
+            219.1
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 40,
+          "nominal_mm": 21.3,
+          "geometry": {
+            "f_mm": {
+              "OT300": 25
+            },
+            "height_mm": {
+              "OT300": 14.4
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 41,
+          "nominal_mm": 26.9,
+          "geometry": {
+            "f_mm": {
+              "OT300": 29
+            },
+            "height_mm": {
+              "OT300": 15.6
+            },
+            "angle_deviation_mm": {
+              "OT300": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 42,
+          "nominal_mm": 33.4,
+          "geometry": {
+            "f_mm": {
+              "OT320": 38
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 43,
+          "nominal_mm": 33.7,
+          "geometry": {
+            "f_mm": {
+              "OT300": 38,
+              "OT320": 38
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 44,
+          "nominal_mm": 38,
+          "geometry": {
+            "f_mm": {
+              "OT310": 50
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 45,
+          "nominal_mm": 42.2,
+          "geometry": {
+            "f_mm": {
+              "OT320": 48
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 46,
+          "nominal_mm": 42.4,
+          "geometry": {
+            "f_mm": {
+              "OT300": 47.5,
+              "OT320": 48
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 47,
+          "nominal_mm": 44.5,
+          "geometry": {
+            "f_mm": {
+              "OT310": 60
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 48,
+          "nominal_mm": 48.3,
+          "geometry": {
+            "f_mm": {
+              "OT300": 57,
+              "OT320": 57
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 49,
+          "nominal_mm": 54,
+          "geometry": {
+            "f_mm": {
+              "OT310": 61
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 50,
+          "nominal_mm": 57,
+          "geometry": {
+            "f_mm": {
+              "OT310": 76
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 51,
+          "nominal_mm": 60.3,
+          "geometry": {
+            "f_mm": {
+              "OT300": 64,
+              "OT320": 64
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 52,
+          "nominal_mm": 69,
+          "geometry": {
+            "f_mm": {
+              "OT310": 80
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 53,
+          "nominal_mm": 73,
+          "geometry": {
+            "f_mm": {
+              "OT320": 76
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 54,
+          "nominal_mm": 76,
+          "geometry": {
+            "f_mm": {
+              "OT310": 80
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 55,
+          "nominal_mm": 76.1,
+          "geometry": {
+            "f_mm": {
+              "OT300": 76
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 56,
+          "nominal_mm": 84,
+          "geometry": {
+            "f_mm": {
+              "OT310": 80
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 57,
+          "nominal_mm": 85,
+          "geometry": {
+            "f_mm": {
+              "OT310": 80
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 58,
+          "nominal_mm": 86,
+          "geometry": {
+            "f_mm": {
+              "OT310": 80
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 59,
+          "nominal_mm": 88.9,
+          "geometry": {
+            "f_mm": {
+              "OT300": 86,
+              "OT320": 86
+            },
+            "angle_deviation_mm": {
+              "OT320": 1
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 60,
+          "nominal_mm": 104,
+          "geometry": {
+            "f_mm": {
+              "OT310": 90
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 61,
+          "nominal_mm": 105,
+          "geometry": {
+            "f_mm": {
+              "OT310": 90
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 62,
+          "nominal_mm": 106,
+          "geometry": {
+            "f_mm": {
+              "OT310": 90
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 63,
+          "nominal_mm": 114.3,
+          "geometry": {
+            "f_mm": {
+              "OT300": 105,
+              "OT320": 105
+            },
+            "angle_deviation_mm": {
+              "OT320": 2
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 64,
+          "nominal_mm": 129,
+          "geometry": {
+            "f_mm": {
+              "OT310": 115
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 65,
+          "nominal_mm": 130,
+          "geometry": {
+            "f_mm": {
+              "OT310": 115
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 66,
+          "nominal_mm": 131,
+          "geometry": {
+            "f_mm": {
+              "OT310": 115
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 67,
+          "nominal_mm": 139.7,
+          "geometry": {
+            "f_mm": {
+              "OT300": 124,
+              "OT320": 124
+            },
+            "angle_deviation_mm": {
+              "OT320": 2
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 68,
+          "nominal_mm": 141.3,
+          "geometry": {
+            "f_mm": {
+              "OT320": 124
+            },
+            "angle_deviation_mm": {
+              "OT320": 2
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 69,
+          "nominal_mm": 154,
+          "geometry": {
+            "f_mm": {
+              "OT310": 135
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 70,
+          "nominal_mm": 155,
+          "geometry": {
+            "f_mm": {
+              "OT310": 135
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 71,
+          "nominal_mm": 156,
+          "geometry": {
+            "f_mm": {
+              "OT310": 135
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 72,
+          "nominal_mm": 158,
+          "geometry": {
+            "f_mm": {
+              "OT310": 135
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 73,
+          "nominal_mm": 168.3,
+          "geometry": {
+            "f_mm": {
+              "OT300": 143,
+              "OT320": 143
+            },
+            "angle_deviation_mm": {
+              "OT320": 2
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 74,
+          "nominal_mm": 204,
+          "geometry": {
+            "f_mm": {
+              "OT310": 175
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 75,
+          "nominal_mm": 205,
+          "geometry": {
+            "f_mm": {
+              "OT310": 175
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 76,
+          "nominal_mm": 206,
+          "geometry": {
+            "f_mm": {
+              "OT310": 175
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 77,
+          "nominal_mm": 208,
+          "geometry": {
+            "f_mm": {
+              "OT310": 175
+            },
+            "f_tolerance_mm": 2
+          }
+        },
+        {
+          "source_row": 78,
+          "nominal_mm": 219.1,
+          "geometry": {
+            "f_mm": {
+              "OT300": 178,
+              "OT320": 178
+            },
+            "angle_deviation_mm": {
+              "OT320": 2
+            },
+            "f_tolerance_mm": 2
+          }
+        }
+      ],
+      "type": "tee",
+      "diameter_tolerance": {
+        "mode": "formula",
+        "classes": {
+          "D2": {
+            "percent": 1,
+            "min_mm": 0.5,
+            "source_text": "D2  ± 1,0% min ± 0,5"
+          },
+          "D3": {
+            "percent": 0.75,
+            "min_mm": 0.3,
+            "source_text": "D3  ± 0,75% min ± 0,3"
+          },
+          "D4": {
+            "percent": 0.5,
+            "min_mm": 0.1,
+            "source_text": "D4  ± 0,5% min ± 0,1"
+          }
+        }
+      }
+    },
+    {
+      "id": "7",
+      "sheet": "7",
+      "name": "EN 10253-4:2008 ASTM A 403 -07 => ASME B16.9-2007 Hydro (Reduced)",
+      "mode": "lookup",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT300",
+          "system": "ISO",
+          "range_mm": [
+            60.3,
+            168.3
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 4,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 33.7
+        },
+        {
+          "source_row": 5,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 48.3
+        },
+        {
+          "source_row": 6,
+          "nominal_mm": 88.9,
+          "secondary_nominal_mm": 60.3
+        },
+        {
+          "source_row": 7,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 60.3
+        },
+        {
+          "source_row": 8,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 88.9
+        },
+        {
+          "source_row": 9,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 114.3
+        },
+        {
+          "source_row": 10,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 139.7
+        }
+      ],
+      "type": "tee",
+      "diameter_tolerance": {
+        "mode": "formula",
+        "classes": {
+          "D2": {
+            "percent": 1,
+            "min_mm": 0.5,
+            "source_text": "D2  ± 1,0% min ± 0,5"
+          }
+        }
+      }
+    },
+    {
+      "id": "8",
+      "sheet": "8",
+      "name": "EN 10253-4:2008 Vedetty",
+      "mode": "lookup",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT302",
+          "system": "ISO",
+          "range_mm": [
+            60.3,
+            406.4
+          ]
+        },
+        {
+          "code": "OT312",
+          "system": "NS",
+          "range_mm": [
+            54,
+            408
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 16,
+          "dn": 50,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 60.3,
+          "d2": 48.3,
+          "d3": 42.4,
+          "d4": 33.7,
+          "h1": 3,
+          "h2": 3,
+          "h3": 2,
+          "h4": 2,
+          "f": 50
+        },
+        {
+          "source_row": 17,
+          "dn": 65,
+          "nominal_mm": 76.1,
+          "secondary_nominal_mm": 76.1,
+          "d2": 60.3,
+          "d3": 48.3,
+          "d4": 42.4,
+          "h1": 4,
+          "h2": 3,
+          "h3": 3,
+          "h4": 2,
+          "f": 65
+        },
+        {
+          "source_row": 18,
+          "dn": 80,
+          "nominal_mm": 88.9,
+          "secondary_nominal_mm": 88.9,
+          "d2": 76.1,
+          "d3": 60.3,
+          "d4": 48.3,
+          "h1": 5,
+          "h2": 4,
+          "h3": 3,
+          "h4": 3,
+          "f": 80
+        },
+        {
+          "source_row": 19,
+          "dn": 100,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 114.3,
+          "d2": 88.9,
+          "d3": 76.1,
+          "d4": 60.3,
+          "h1": 7,
+          "h2": 5,
+          "h3": 4,
+          "h4": 3,
+          "f": 100
+        },
+        {
+          "source_row": 20,
+          "dn": 125,
+          "nominal_mm": 139.7,
+          "secondary_nominal_mm": 139.7,
+          "d2": 114.3,
+          "d3": 88.9,
+          "d4": 76.1,
+          "h1": 8,
+          "h2": 7,
+          "h3": 5,
+          "h4": 4,
+          "f": 125
+        },
+        {
+          "source_row": 21,
+          "dn": 150,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 168.3,
+          "d2": 139.7,
+          "d3": 114.3,
+          "d4": 88.9,
+          "h1": 10,
+          "h2": 8,
+          "h3": 7,
+          "h4": 5,
+          "f": 150
+        },
+        {
+          "source_row": 22,
+          "dn": 200,
+          "nominal_mm": 219.1,
+          "secondary_nominal_mm": 219.1,
+          "d2": 168.3,
+          "d3": 139.7,
+          "d4": 114.3,
+          "h1": 12,
+          "h2": 10,
+          "h3": 8,
+          "h4": 7,
+          "f": 200
+        },
+        {
+          "source_row": 23,
+          "dn": 250,
+          "nominal_mm": 273,
+          "secondary_nominal_mm": 273,
+          "d2": 219.1,
+          "d3": 168.3,
+          "d4": 139.7,
+          "h1": 13,
+          "h2": 12,
+          "h3": 10,
+          "h4": 8,
+          "f": 250
+        },
+        {
+          "source_row": 24,
+          "dn": 300,
+          "nominal_mm": 323.9,
+          "secondary_nominal_mm": 323.9,
+          "d2": 273,
+          "d3": 219.1,
+          "d4": 168.3,
+          "h1": 15,
+          "h2": 13,
+          "h3": 12,
+          "h4": 10,
+          "f": 300
+        },
+        {
+          "source_row": 25,
+          "dn": 350,
+          "nominal_mm": 355.6,
+          "secondary_nominal_mm": 355.6,
+          "d2": 323.9,
+          "d3": 273,
+          "d4": 219.1,
+          "h1": 17,
+          "h2": 15,
+          "h3": 13,
+          "h4": 12,
+          "f": 350
+        },
+        {
+          "source_row": 26,
+          "dn": 400,
+          "nominal_mm": 406.4,
+          "secondary_nominal_mm": 406.4,
+          "d2": 355.6,
+          "d3": 323.9,
+          "d4": 273,
+          "h1": 20,
+          "h2": 15,
+          "h3": 13,
+          "h4": 13,
+          "f": 400
+        }
+      ],
+      "type": "tee"
+    },
+    {
+      "id": "9",
+      "sheet": "9",
+      "name": "EN 10253-4:2008 3-tyyppi",
+      "mode": "lookup",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT303",
+          "system": "ISO",
+          "range_mm": [
+            60.3,
+            406.4
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 16,
+          "dn": 50,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 60.3,
+          "d2": 48.3,
+          "d3": 42.4,
+          "d4": 33.7,
+          "f": 125
+        },
+        {
+          "source_row": 17,
+          "dn": 65,
+          "nominal_mm": 76.1,
+          "secondary_nominal_mm": 76.1,
+          "d2": 60.3,
+          "d3": 48.3,
+          "d4": 42.4,
+          "f": 140
+        },
+        {
+          "source_row": 18,
+          "dn": 80,
+          "nominal_mm": 88.9,
+          "secondary_nominal_mm": 88.9,
+          "d2": 76.1,
+          "d3": 60.3,
+          "d4": 48.3,
+          "f": 150
+        },
+        {
+          "source_row": 19,
+          "dn": 100,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 114.3,
+          "d2": 88.9,
+          "d3": 76.1,
+          "d4": 60.3,
+          "f": 160
+        },
+        {
+          "source_row": 20,
+          "dn": 125,
+          "nominal_mm": 139.7,
+          "secondary_nominal_mm": 139.7,
+          "d2": 114.3,
+          "d3": 88.9,
+          "d4": 76.1,
+          "f": 180
+        },
+        {
+          "source_row": 21,
+          "dn": 150,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 168.3,
+          "d2": 139.7,
+          "d3": 114.3,
+          "d4": 88.9,
+          "f": 200
+        },
+        {
+          "source_row": 22,
+          "dn": 200,
+          "nominal_mm": 219.1,
+          "secondary_nominal_mm": 219.1,
+          "d2": 168.3,
+          "d3": 139.7,
+          "d4": 114.3,
+          "f": 250
+        },
+        {
+          "source_row": 23,
+          "dn": 250,
+          "nominal_mm": 273,
+          "secondary_nominal_mm": 273,
+          "d2": 219.1,
+          "d3": 168.3,
+          "d4": 139.7,
+          "f": 300
+        },
+        {
+          "source_row": 24,
+          "dn": 300,
+          "nominal_mm": 323.9,
+          "secondary_nominal_mm": 323.9,
+          "d2": 273,
+          "d3": 219.1,
+          "d4": 168.3,
+          "f": 330
+        },
+        {
+          "source_row": 25,
+          "dn": 350,
+          "nominal_mm": 355.6,
+          "secondary_nominal_mm": 355.6,
+          "d2": 323.9,
+          "d3": 273,
+          "d4": 219.1,
+          "f": 360
+        },
+        {
+          "source_row": 26,
+          "dn": 400,
+          "nominal_mm": 406.4,
+          "secondary_nominal_mm": 406.4,
+          "d2": 355.6,
+          "d3": 323.9,
+          "d4": 273,
+          "f": 400
+        }
+      ],
+      "type": "tee"
+    },
+    {
+      "id": "10",
+      "sheet": "10",
+      "name": "L-kaulus",
+      "mode": "hybrid",
+      "unit": "mm",
+      "ot_codes": [
+        {
+          "code": "OT503",
+          "system": "ISO",
+          "range_mm": [
+            219.1,
+            610
+          ]
+        },
+        {
+          "code": "OT513",
+          "system": "NS",
+          "range_mm": [
+            200,
+            800
+          ]
+        }
+      ],
+      "entries": [
+        {
+          "source_row": 45,
+          "nominal_mm": 0,
+          "flatness_q_mm": 0.9
+        },
+        {
+          "source_row": 46,
+          "nominal_mm": 200,
+          "flatness_q_mm": 1.2
+        },
+        {
+          "source_row": 47,
+          "nominal_mm": 400,
+          "flatness_q_mm": 1.5
+        },
+        {
+          "source_row": 48,
+          "nominal_mm": 820,
+          "flatness_q_mm": 1.8
+        }
+      ],
+      "type": "collar",
+      "diameter_tolerance": {
+        "mode": "formula",
+        "classes": {
+          "D2": {
+            "percent": 1,
+            "min_mm": 0.5,
+            "source_text": "D2  ± 1,0% min ± 0,5"
+          }
+        }
+      }
+    }
+  ]
+}

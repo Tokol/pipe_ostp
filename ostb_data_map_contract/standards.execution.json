@@ -1,0 +1,224 @@
+{
+  "id": "standards.execution",
+  "version": "1.0.0",
+  "contract_version": "1.0.0",
+  "data_file": "standards.json",
+  "schema_file": "standards.schema.json",
+  "api_file": "standards.openapi.json",
+  "purpose": "Defines deterministic execution semantics for the strict Excel extraction in standards.json.",
+  "contract_binding": {
+    "required_metadata_path": "metadata.contract.execution_spec",
+    "required_ref": "standards.execution.json",
+    "required_version": "1.0.0",
+    "rule": "A consumer must reject standards.json when metadata.contract.execution_spec.$ref or metadata.contract.execution_spec.version does not match this file."
+  },
+  "units": {
+    "default": "mm",
+    "conversion": {
+      "inch_to_mm": 25.4
+    },
+    "rules": [
+      {
+        "field_pattern": "*_mm",
+        "unit": "mm"
+      },
+      {
+        "field_pattern": "*_inch",
+        "unit": "nominal_inch_label"
+      },
+      {
+        "field_pattern": "range_inch",
+        "unit": "nominal_inch_label_range",
+        "note": "Use for nominal pipe size label filtering. Do not convert these labels directly to physical diameter unless an entry also gives nominal_mm."
+      }
+    ]
+  },
+  "matching": {
+    "standard_selection_order": [
+      "filter by requested ot_code when provided",
+      "filter by requested type when provided",
+      "filter by requested system when provided",
+      "filter by requested radius when provided",
+      "filter by range_mm or range_inch when an applicable range exists",
+      "filter by exact entry nominal_mm, nominal_inch, diameter_pair_mm, or secondary_nominal_mm when provided",
+      "return ambiguity when more than one standard or entry remains"
+    ],
+    "numeric_match": {
+      "default_tolerance_mm": 0.000001,
+      "rule": "Two numeric values match when abs(a - b) <= default_tolerance_mm."
+    },
+    "out_of_range": {
+      "diameter_range_enforced": true,
+      "error_on_out_of_range": true,
+      "error_code": "DIAMETER_OUT_OF_RANGE"
+    },
+    "missing_lookup": {
+      "error_code": "NO_MATCHING_ENTRY",
+      "rule": "Do not interpolate or derive missing lookup entries from neighboring rows."
+    },
+    "ambiguous_lookup": {
+      "error_code": "AMBIGUOUS_STANDARD_OR_ENTRY",
+      "rule": "Caller must provide more selectors, such as ot_code, system, type, radius, nominal_mm, nominal_inch, or secondary_nominal_mm."
+    }
+  },
+  "rounding": {
+    "calculation_precision": "decimal",
+    "rounding_mode": "half_up",
+    "internal_decimal_places": 6,
+    "response_decimal_places": 6,
+    "rule": "Perform calculations with decimal arithmetic. Round only returned numeric results, not intermediate values."
+  },
+  "modes": {
+    "formula": {
+      "resolution_order": [
+        "select standard",
+        "select diameter_tolerance class",
+        "apply diameter_tolerance formula"
+      ]
+    },
+    "lookup": {
+      "resolution_order": [
+        "select standard",
+        "select exact entry",
+        "return extracted values only"
+      ],
+      "derivation_allowed": false
+    },
+    "hybrid": {
+      "resolution_order": [
+        "select standard",
+        "select exact lookup entry when entries are present",
+        "return extracted geometry or dimensions",
+        "apply formula tolerance only for fields governed by diameter_tolerance"
+      ],
+      "derivation_allowed": false
+    }
+  },
+  "tolerance_semantics": {
+    "diameter_tolerance": {
+      "class_rule": {
+        "type": "bilateral_percent_with_minimum",
+        "formula": "absolute_tolerance_mm = max(nominal_mm * percent / 100, min_mm)",
+        "percent_branch": "nominal_mm * percent / 100",
+        "minimum_branch": "min_mm",
+        "min_value_mm": "nominal_mm - absolute_tolerance_mm",
+        "max_value_mm": "nominal_mm + absolute_tolerance_mm",
+        "applies_as": "plus_minus"
+      },
+      "required_inputs": [
+        "nominal_mm",
+        "class"
+      ],
+      "valid_classes": [
+        "D2",
+        "D3",
+        "D4"
+      ],
+      "error_on_missing_class": true
+    },
+    "geometry_tolerance_fields": {
+      "field_suffix": "_tolerance_mm",
+      "type": "bilateral_absolute",
+      "formula": "min_value_mm = nominal_field_mm - value; max_value_mm = nominal_field_mm + value",
+      "applies_as": "plus_minus",
+      "note": "This contract applies to extracted tolerance fields such as f_tolerance_mm. If a future source row proves a unilateral tolerance, store it as an explicit object instead of using the suffix convention."
+    },
+    "angle_deviation_mm": {
+      "type": "maximum_absolute_deviation",
+      "unit": "mm",
+      "formula": "abs(measured_deviation_mm) <= value"
+    },
+    "flatness_q_mm": {
+      "type": "maximum_absolute",
+      "unit": "mm",
+      "formula": "measured_flatness_mm <= flatness_q_mm"
+    },
+    "thickness": {
+      "nominal": {
+        "type": "nominal_value",
+        "unit": "mm"
+      },
+      "minimum": {
+        "type": "minimum_value",
+        "unit": "mm",
+        "formula": "measured_thickness_mm >= min_mm"
+      }
+    }
+  },
+  "traceability": {
+    "source_row": {
+      "meaning": "Original 1-based Excel row number in the sheet named by standard.sheet.",
+      "public_identifier": false
+    },
+    "stable_ids": {
+      "required_for_public_api": true,
+      "recommended_format": "{standard_id}:{entry_kind}:{primary_dimension}:{secondary_dimension_or_schedule}",
+      "note": "standards.json currently keeps strict source rows. Public API responses should add stable IDs without removing source_row."
+    }
+  },
+  "strict_extraction_policy": {
+    "no_guessed_values": true,
+    "no_interpolation": true,
+    "no_formula_cell_reconstruction": true,
+    "omit_empty_and_ambiguous_values": true,
+    "rule": "When the Excel source is ambiguous, preserve traceability and omit the ambiguous value rather than guessing."
+  },
+  "errors": {
+    "DIAMETER_OUT_OF_RANGE": "Input diameter is outside the selected OT code range.",
+    "NO_MATCHING_STANDARD": "No standard matches the supplied selectors.",
+    "NO_MATCHING_ENTRY": "No lookup entry matches the supplied dimensions.",
+    "AMBIGUOUS_STANDARD_OR_ENTRY": "More than one standard or entry matches the supplied selectors.",
+    "MISSING_TOLERANCE_CLASS": "A formula standard requires an explicit diameter tolerance class.",
+    "UNSUPPORTED_DERIVATION": "Requested output requires interpolation, Excel formula reconstruction, or another derivation not allowed by the strict extraction policy."
+  },
+  "test_vectors": [
+    {
+      "id": "diameter-d2-percent-branch",
+      "request": {
+        "operation": "compute-diameter-tolerance",
+        "standard_id": "1",
+        "nominal_mm": 100,
+        "class": "D2"
+      },
+      "expected": {
+        "absolute_tolerance_mm": 1,
+        "min_value_mm": 99,
+        "max_value_mm": 101,
+        "applied_branch": "percent"
+      }
+    },
+    {
+      "id": "diameter-d4-minimum-branch",
+      "request": {
+        "operation": "compute-diameter-tolerance",
+        "standard_id": "1",
+        "nominal_mm": 16,
+        "class": "D4"
+      },
+      "expected": {
+        "absolute_tolerance_mm": 0.1,
+        "min_value_mm": 15.9,
+        "max_value_mm": 16.1,
+        "applied_branch": "minimum"
+      }
+    },
+    {
+      "id": "lookup-double-dimension",
+      "request": {
+        "operation": "lookup-entry",
+        "standard_id": "2",
+        "diameter_pair_mm": {
+          "a": 355,
+          "b": 355.6
+        }
+      },
+      "expected": {
+        "source_row": 4,
+        "diameter_pair_mm": {
+          "a": 355,
+          "b": 355.6
+        }
+      }
+    }
+  ]
+}
