@@ -2337,6 +2337,10 @@ def render_system_status(
         count = len(standards_contract.get("standards", []))
         version = standards_contract.get("metadata", {}).get("contract_version", "unknown")
         st.sidebar.success(f"OSTB standards loaded: {count} standards, v{version}.")
+    if not TOLERANCE_PATH.exists():
+        st.sidebar.warning("Tolerance workbook missing. Excel-based tolerance lookup is unavailable.")
+    else:
+        st.sidebar.success(f"Tolerance workbook loaded: {TOLERANCE_PATH.name}")
     if saved_scale is None:
         st.sidebar.info("No saved millimeter scale.")
     else:
