@@ -3066,11 +3066,21 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str) -> Dict
         if selected_method not in {"None", "MIC"}:
             st.caption("Roundness error = maximum radial distance - minimum radial distance.")
 
+    reference_diameter = measurement.diameter_mm if unit == "mm" else measurement.diameter_px
+
+    def format_error_with_percent(error_value: float) -> str:
+        if not np.isfinite(error_value):
+            return format_value(error_value)
+        if not np.isfinite(reference_diameter) or reference_diameter <= 0:
+            return format_value(error_value)
+        percent_value = error_value / reference_diameter * 100.0
+        return f"{format_value(error_value)} ({percent_value:.2f}%)"
+
     st.markdown("### All method values at a glance")
     cols = st.columns(4)
-    cols[0].metric("LSC roundness error", format_value(roundness_lsc))
-    cols[1].metric("MZC roundness error", format_value(roundness_mzc))
-    cols[2].metric("MCC roundness error", format_value(roundness_mcc))
+    cols[0].metric("LSC roundness error", format_error_with_percent(roundness_lsc))
+    cols[1].metric("MZC roundness error", format_error_with_percent(roundness_mzc))
+    cols[2].metric("MCC roundness error", format_error_with_percent(roundness_mcc))
     cols[3].metric("MIC inner diameter", format_value(mic_diameter))
 
     with st.expander("How to interpret these numbers"):
