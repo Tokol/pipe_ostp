@@ -11,17 +11,34 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import cv2
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 try:
+    import cv2
+except ModuleNotFoundError as exc:  # pragma: no cover - depends on deployment environment.
+    cv2 = None
+    CV2_IMPORT_ERROR = exc
+else:
+    CV2_IMPORT_ERROR = None
+
+try:
     from scipy.optimize import least_squares, minimize
 except Exception:  # pragma: no cover - app still works with algebraic fit fallback.
     least_squares = None
     minimize = None
+
+
+if CV2_IMPORT_ERROR is not None:  # pragma: no cover - UI guard for missing host dependency.
+    st.error(
+        "OpenCV is not installed in this environment. "
+        "Add `opencv-python-headless==4.10.0.84` to `requirements.txt` "
+        "and redeploy the Streamlit app."
+    )
+    st.caption(f"Import error: {CV2_IMPORT_ERROR}")
+    st.stop()
 
 
 APP_DIR = Path(__file__).resolve().parent
