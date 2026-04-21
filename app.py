@@ -2310,10 +2310,6 @@ def render_page_header() -> None:
     title_col, logo_col = st.columns([4.5, 1.1], vertical_alignment="center")
     with title_col:
         st.title("Industrial Pipe Roundness Inspector")
-        st.markdown(
-            '<div class="brand-caption">Pixel-first inspection with optional scale conversion and Excel tolerance evaluation.</div>',
-            unsafe_allow_html=True,
-        )
     with logo_col:
         if OSTP_LOGO_PATH.exists():
             st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
