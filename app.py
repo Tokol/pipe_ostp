@@ -2640,7 +2640,7 @@ def roundness_quality_label(relative_roundness: float) -> Tuple[str, str]:
     return "High deviation", "The detected edge varies strongly from the fitted circle or includes noisy rim points."
 
 
-def render_roundness_evaluation(measurement: PipeMeasurement, unit: str) -> Dict[str, object]:
+def render_roundness_evaluation(measurement: PipeMeasurement, unit: str, feature_type: str = "inner") -> Dict[str, object]:
     """
     Educational, interactive roundness evaluation based on ISO 12181 concepts.
     Explains LSC, MZC, MCC, and MIC on the actual measurement data.
@@ -2674,6 +2674,7 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str) -> Dict
     roundness_lsc = float(roundness_methods["lsc_roundness_px"] * scale)
     roundness_mzc = float(roundness_methods["mzc_roundness_px"] * scale)
     roundness_mcc = float(roundness_methods["mcc_roundness_px"] * scale)
+    mcc_diameter = float(mcc_radius * 2.0 * scale)
     mic_diameter = float(roundness_methods["mic_diameter_px"] * scale)
     value = measurement.roundness_mm if unit == "mm" else measurement.roundness_px
     points = measurement.contour_points.astype(np.float64)
@@ -3076,12 +3077,95 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str) -> Dict
         percent_value = error_value / reference_diameter * 100.0
         return f"{format_value(error_value)} ({percent_value:.2f}%)"
 
+    def render_value_card(column, label: str, primary_value: str, secondary_value: str | None = None) -> None:
+        secondary_html = f"<div class='ostb-method-card-secondary'>{secondary_value}</div>" if secondary_value else ""
+        column.markdown(
+            f"""
+            <div class="ostb-method-card">
+                <div class="ostb-method-card-label">{label}</div>
+                <div class="ostb-method-card-value">{primary_value}</div>
+                {secondary_html}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        """
+        <style>
+        .ostb-method-card {
+            min-height: 132px;
+            padding: 16px 18px;
+            border: 1px solid rgba(49, 83, 120, 0.22);
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+        .ostb-method-card-label {
+            font-size: 0.95rem;
+            color: #1f2937;
+            line-height: 1.35;
+            margin-bottom: 12px;
+        }
+        .ostb-method-card-value {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+        .ostb-method-card-secondary {
+            margin-top: 6px;
+            font-size: 0.96rem;
+            font-weight: 600;
+            color: #475569;
+            line-height: 1.25;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.markdown("### All method values at a glance")
     cols = st.columns(4)
-    cols[0].metric("LSC roundness error", format_error_with_percent(roundness_lsc))
-    cols[1].metric("MZC roundness error", format_error_with_percent(roundness_mzc))
-    cols[2].metric("MCC roundness error", format_error_with_percent(roundness_mcc))
-    cols[3].metric("MIC inner diameter", format_value(mic_diameter))
+    render_value_card(cols[0], "LSC roundness error", format_value(roundness_lsc), f"{roundness_lsc / reference_diameter * 100.0:.2f}%" if np.isfinite(roundness_lsc) and np.isfinite(reference_diameter) and reference_diameter > 0 else None)
+    render_value_card(cols[1], "MZC roundness error", format_value(roundness_mzc), f"{roundness_mzc / reference_diameter * 100.0:.2f}%" if np.isfinite(roundness_mzc) and np.isfinite(reference_diameter) and reference_diameter > 0 else None)
+    render_value_card(cols[2], "MCC roundness error", format_value(roundness_mcc), f"{roundness_mcc / reference_diameter * 100.0:.2f}%" if np.isfinite(roundness_mcc) and np.isfinite(reference_diameter) and reference_diameter > 0 else None)
+    render_value_card(cols[3], "MIC inner diameter", format_value(mic_diameter))
+
+    st.markdown("### Feature-based evaluation")
+    normalized_mzc = (
+        f"{roundness_mzc / reference_diameter * 100.0:.2f}%"
+        if np.isfinite(roundness_mzc) and np.isfinite(reference_diameter) and reference_diameter > 0
+        else "not available"
+    )
+    is_outer = feature_type == "outer"
+    size_metric_label = "MCC diameter" if is_outer else "MIC diameter"
+    size_metric_value = mcc_diameter if is_outer else mic_diameter
+    feature_heading = "Outer pipe diameter" if is_outer else "Inner/opening rim"
+    eval_left, eval_right = st.columns(2, gap="large")
+    with eval_left:
+        st.markdown(f"#### {feature_heading}")
+        st.markdown(
+            f"""
+            - **Size metric used**: `{size_metric_label}`
+            - **Measured {size_metric_label.lower()}**: `{format_value(size_metric_value)}`
+            - **Roundness metric used**: `MZC roundness error`
+            - **Measured MZC roundness error**: `{format_value(roundness_mzc)}`
+            - **Relative MZC error**: `{normalized_mzc}`
+            """
+        )
+    with eval_right:
+        if is_outer:
+            st.info(
+                "For an outer pipe, use MCC diameter for fit/size comparison and MZC roundness error for the roundness check. "
+                "LSC and MCC roundness error remain supporting values."
+            )
+        else:
+            st.info(
+                "For an inner opening, use MIC diameter for fit/clearance comparison and MZC roundness error for the roundness check. "
+                "LSC and MCC roundness error remain supporting values."
+            )
 
     with st.expander("How to interpret these numbers"):
         st.markdown(
@@ -3107,10 +3191,14 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str) -> Dict
         "lsc_roundness": roundness_lsc,
         "mzc_roundness": roundness_mzc,
         "mcc_roundness": roundness_mcc,
+        "mcc_diameter": mcc_diameter,
         "lsc_roundness_error": roundness_lsc,
         "mzc_roundness_error": roundness_mzc,
         "mcc_roundness_error": roundness_mcc,
         "mic_diameter": mic_diameter,
+        "feature_type": feature_type,
+        "size_metric_label": size_metric_label,
+        "size_metric_value": size_metric_value,
         "unit": unit,
     }
 
@@ -3345,21 +3433,27 @@ def main() -> None:
     inner_reference_measurement = raw_test
     target_warning = None
     wall_target_detection = detect_pipe_wall_rims(test_processed, inner_reference_measurement)
+    resolved_feature_type = "inner"
     if measurement_target == "Inner/opening rim":
         test_note = f"{test_note}; target inner/opening rim"
+        resolved_feature_type = "inner"
     elif measurement_target == "Auto":
         if wall_target_detection is not None:
             raw_test = build_outer_wall_measurement(inner_reference_measurement, wall_target_detection)
             test_note = f"{test_note}; auto target selected outer pipe diameter from wall guide"
+            resolved_feature_type = "outer"
         else:
             test_note = f"{test_note}; auto target fell back to inner/opening rim"
+            resolved_feature_type = "inner"
     elif measurement_target == "Outer pipe diameter":
         if wall_target_detection is not None:
             raw_test = build_outer_wall_measurement(inner_reference_measurement, wall_target_detection)
             test_note = f"{test_note}; target outer pipe diameter from wall guide"
+            resolved_feature_type = "outer"
         else:
             target_warning = "Outer pipe diameter was requested, but the outer wall edge was not found clearly. Using inner/opening rim result."
             test_note = f"{test_note}; requested outer pipe diameter but outer wall was not found; using inner/opening rim"
+            resolved_feature_type = "inner"
 
     st.subheader("Pixel Inspection")
     if target_warning is not None:
@@ -3451,7 +3545,7 @@ def main() -> None:
     unit = "mm" if mm_per_pixel is not None else "px"
 
     if mm_per_pixel is not None:
-        render_roundness_evaluation(test_measurement, unit)
+        render_roundness_evaluation(test_measurement, unit, resolved_feature_type)
         st.subheader("OSTB Standards Check")
         if standards_contract is None:
             st.error("The OSTB standards data package is missing or invalid, so tolerance comparison is unavailable.")
