@@ -1457,6 +1457,17 @@ def nominal_candidates_from_entry(entry: Dict[str, object]) -> List[Tuple[str, f
     return [(label, value) for label, value in candidates if value > 0]
 
 
+def explicit_lookup_range_from_entry(entry: Optional[Dict[str, object]]) -> Optional[Tuple[float, float]]:
+    if not entry:
+        return None
+    pair = entry.get("diameter_pair_mm")
+    if isinstance(pair, dict):
+        values = [float(value) for value in pair.values() if float(value) > 0]
+        if len(values) >= 2:
+            return min(values), max(values)
+    return None
+
+
 def build_contract_tolerance_report(
     measurement: PipeMeasurement,
     standard: Dict[str, object],
@@ -1495,6 +1506,57 @@ def build_contract_tolerance_report(
 
     selected_entry_summary = selected_entry or {}
     if not rows:
+        lookup_range = explicit_lookup_range_from_entry(selected_entry)
+        if lookup_range is not None:
+            min_diameter_mm, max_diameter_mm = lookup_range
+            diameter_ok = bool(min_diameter_mm <= measurement.diameter_mm <= max_diameter_mm)
+            failure_reason = (
+                f"LOOKUP RANGE MATCH: measured diameter {measurement.diameter_mm:.3f} mm is inside the "
+                f"selected row range {min_diameter_mm:.3f}-{max_diameter_mm:.3f} mm. "
+                "This is a row-range check, not a formula tolerance check."
+                if diameter_ok
+                else f"LOOKUP RANGE MISS: measured diameter {measurement.diameter_mm:.3f} mm is outside the "
+                f"selected row range {min_diameter_mm:.3f}-{max_diameter_mm:.3f} mm. "
+                "This is a row-range check, not a formula tolerance check."
+            )
+            table = pd.DataFrame(
+                [
+                    {
+                        "class": "LOOKUP_RANGE",
+                        "nominal_mm": nominal_values[0][1] if nominal_values else float("nan"),
+                        "min_diameter_mm": min_diameter_mm,
+                        "max_diameter_mm": max_diameter_mm,
+                        "diameter_ok": diameter_ok,
+                        "source_text": "Explicit min/max range from the selected lookup row",
+                    }
+                ]
+            )
+            return {
+                "standard_label": standard_display_name(standard),
+                "standard_id": standard["id"],
+                "sheet_name": standard["sheet"],
+                "mode": standard["mode"],
+                "nominal_mm": nominal_values[0][1] if nominal_values else (min_diameter_mm + max_diameter_mm) / 2.0,
+                "tolerance_table": table,
+                "max_ovality_mm": float("nan"),
+                "ovality_source": "not part of lookup range check",
+                "best_diameter_class": "LOOKUP_RANGE" if diameter_ok else "NONE",
+                "best_overall_class": "LOOKUP_RANGE" if diameter_ok else "NONE",
+                "overall": diameter_ok,
+                "diameter_ok": diameter_ok,
+                "roundness_ok": True,
+                "min_diameter_mm": min_diameter_mm,
+                "max_diameter_mm": max_diameter_mm,
+                "diameter_fail_amount_mm": 0.0 if diameter_ok else min(
+                    abs(measurement.diameter_mm - min_diameter_mm),
+                    abs(measurement.diameter_mm - max_diameter_mm),
+                ),
+                "roundness_excess_mm": 0.0,
+                "failure_reason": failure_reason,
+                "selected_entry": selected_entry_summary,
+                "evaluation_available": True,
+                "lookup_range_only": True,
+            }
         return {
             "standard_label": standard_display_name(standard),
             "standard_id": standard["id"],
@@ -1512,8 +1574,8 @@ def build_contract_tolerance_report(
             "min_diameter_mm": float("nan"),
             "max_diameter_mm": float("nan"),
             "failure_reason": (
-                "This standard contains lookup data, but no extracted diameter tolerance formula. "
-                "Use it for nominal/thickness/geometry lookup, or enable an approved manual tolerance if your vendor/customer provides one."
+                "This selected lookup row has no explicit min/max diameter range and no extracted diameter tolerance formula. "
+                "Use it as reference data only, or enable an approved manual tolerance if your vendor/customer provides one."
             ),
             "selected_entry": selected_entry_summary,
             "evaluation_available": False,
@@ -1648,6 +1710,8 @@ def render_contract_standard_grid(standards: List[Dict[str, object]]) -> Dict[st
 def render_contract_tolerance_inputs(
     measurement: PipeMeasurement,
     standards_contract: Dict[str, object],
+    suggested_nominal_mm: Optional[float] = None,
+    feature_type: str = "inner",
 ) -> Optional[Dict[str, object]]:
     standards = standards_contract["standards"]
     selected_standard = render_contract_standard_grid(standards)
@@ -1680,19 +1744,41 @@ def render_contract_tolerance_inputs(
 
     with input_cols[1]:
         if entries:
-            entry_index = st.selectbox("Nominal / table entry", range(len(entries)), format_func=lambda idx: entry_display_name(entries[idx]))
+            preferred_nominal = suggested_nominal_mm if suggested_nominal_mm is not None and suggested_nominal_mm > 0 else measurement.diameter_mm
+            default_entry_index = 0
+            closest_diff = float("inf")
+            for idx, entry in enumerate(entries):
+                candidates = nominal_candidates_from_entry(entry)
+                if not candidates:
+                    continue
+                diff = min(abs(candidate_value - preferred_nominal) for _, candidate_value in candidates)
+                if diff < closest_diff:
+                    closest_diff = diff
+                    default_entry_index = idx
+            entry_index = st.selectbox(
+                "Nominal / table entry",
+                range(len(entries)),
+                index=default_entry_index,
+                format_func=lambda idx: entry_display_name(entries[idx]),
+            )
             selected_entry = entries[entry_index]
             nominal_values = nominal_candidates_from_entry(selected_entry)
             if not nominal_values:
                 st.info("This selected table row has no diameter nominal value for pass/fail calculation.")
+            else:
+                st.caption(
+                    f"Suggested from current {feature_type} evaluation: {preferred_nominal:.3f} mm. "
+                    "Selected table entry controls the actual nominal used for the check."
+                )
         else:
+            preferred_nominal = float(max(suggested_nominal_mm if suggested_nominal_mm is not None else measurement.diameter_mm, 0.001))
             mm_range = standard_range_mm(selected_standard, selected_ot)
             if mm_range is not None:
                 nominal = st.slider(
                     "Manual nominal diameter (mm)",
                     min_value=float(mm_range[0]),
                     max_value=float(mm_range[1]),
-                    value=float(max(mm_range[0], min(measurement.diameter_mm, mm_range[1]))),
+                    value=float(max(mm_range[0], min(preferred_nominal, mm_range[1]))),
                     step=0.1,
                     help="This standard has no fixed nominal table. Slider is limited by the selected OT range.",
                 )
@@ -1700,11 +1786,12 @@ def render_contract_tolerance_inputs(
                 nominal = st.number_input(
                     "Manual nominal diameter (mm)",
                     min_value=0.001,
-                    value=float(max(measurement.diameter_mm, 0.001)),
+                    value=preferred_nominal,
                     step=0.1,
                     help="No OT mm range is defined, so manual nominal entry is allowed.",
                 )
             nominal_values = [("manual_nominal_mm", float(nominal))]
+            st.caption(f"Default nominal comes from the current {feature_type} size metric: {preferred_nominal:.3f} mm.")
 
     with input_cols[2]:
         if classes:
@@ -2421,6 +2508,8 @@ def load_gif_data_uri(gif_path: str) -> str:
 def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
     if not tolerance_report.get("evaluation_available", True):
         return
+    if tolerance_report.get("lookup_range_only", False):
+        return
 
     passed = bool(tolerance_report["overall"])
     gif_path = SUCCESS_GIF_PATH if passed else FAIL_GIF_PATH
@@ -2507,7 +2596,12 @@ def render_tolerance_summary(tolerance_report: Dict[str, object]) -> None:
         return
 
     status = "PASS" if tolerance_report["overall"] else "FAIL"
-    if tolerance_report["overall"]:
+    if tolerance_report.get("lookup_range_only", False):
+        if tolerance_report["overall"]:
+            st.info(tolerance_report["failure_reason"])
+        else:
+            st.warning(tolerance_report["failure_reason"])
+    elif tolerance_report["overall"]:
         st.success(tolerance_report["failure_reason"])
     else:
         st.error(tolerance_report["failure_reason"])
@@ -2516,10 +2610,13 @@ def render_tolerance_summary(tolerance_report: Dict[str, object]) -> None:
     c1.metric("Allowed diameter min", f"{tolerance_report['min_diameter_mm']:.3f} mm")
     c2.metric("Allowed diameter max", f"{tolerance_report['max_diameter_mm']:.3f} mm")
     c3.metric("Nominal diameter", f"{tolerance_report['nominal_mm']:.3f} mm")
-    c4.metric("Overall", status)
+    c4.metric("Overall", "RANGE MATCH" if tolerance_report.get("lookup_range_only", False) and tolerance_report["overall"] else status)
 
     if tolerance_report["best_diameter_class"] != "NONE":
-        st.caption(f"Passing tolerance class: {tolerance_report['best_diameter_class']}")
+        if tolerance_report.get("lookup_range_only", False):
+            st.caption("This result used an explicit lookup row range, not a formula tolerance class.")
+        else:
+            st.caption(f"Passing tolerance class: {tolerance_report['best_diameter_class']}")
     table = tolerance_report["tolerance_table"].copy()
     if "diameter_ok" in table.columns:
         table["diameter_ok"] = table["diameter_ok"].map(lambda value: "✓" if bool(value) else "✕")
@@ -3093,6 +3190,23 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str, feature
     st.markdown(
         """
         <style>
+        .ostb-method-chip-row {
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+            margin: 0 0 14px 0;
+        }
+        .ostb-method-chip {
+            display:inline-flex;
+            align-items:center;
+            padding: 4px 10px;
+            border-radius:999px;
+            font-size:0.82rem;
+            font-weight:600;
+            border:1px solid #d6e4f0;
+            background:#f7fafc;
+            color:#1f2937;
+        }
         .ostb-method-card {
             min-height: 132px;
             padding: 16px 18px;
@@ -3143,6 +3257,21 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str, feature
     size_metric_label = "MCC diameter" if is_outer else "MIC diameter"
     size_metric_value = mcc_diameter if is_outer else mic_diameter
     feature_heading = "Outer pipe diameter" if is_outer else "Inner/opening rim"
+    st.markdown(
+        f"""
+        <div class="ostb-method-chip-row">
+            <span class="ostb-method-chip">{feature_heading}</span>
+            <span class="ostb-method-chip">Size metric used: {size_metric_label}</span>
+            <span class="ostb-method-chip">Roundness metric used: MZC roundness error</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    value_cols = st.columns(4, gap="medium")
+    render_value_card(value_cols[0], "Applied size metric", format_value(size_metric_value))
+    render_value_card(value_cols[1], "Applied roundness metric", format_value(roundness_mzc), normalized_mzc if normalized_mzc != "not available" else None)
+    render_value_card(value_cols[2], "MCC diameter", format_value(mcc_diameter))
+    render_value_card(value_cols[3], "MIC diameter", format_value(mic_diameter))
     eval_left, eval_right = st.columns(2, gap="large")
     with eval_left:
         st.markdown(f"#### {feature_heading}")
@@ -3157,14 +3286,22 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str, feature
         )
     with eval_right:
         if is_outer:
-            st.info(
-                "For an outer pipe, use MCC diameter for fit/size comparison and MZC roundness error for the roundness check. "
-                "LSC and MCC roundness error remain supporting values."
+            st.markdown(
+                f"""
+                - **Applied flow**
+                - Use `{format_value(mcc_diameter)}` from **MCC diameter** for size/fit comparison.
+                - Use `{format_value(roundness_mzc)}` from **MZC roundness error** for roundness comparison.
+                - Supporting values still shown: `LSC {format_value(roundness_lsc)}` and `MCC roundness {format_value(roundness_mcc)}`.
+                """
             )
         else:
-            st.info(
-                "For an inner opening, use MIC diameter for fit/clearance comparison and MZC roundness error for the roundness check. "
-                "LSC and MCC roundness error remain supporting values."
+            st.markdown(
+                f"""
+                - **Applied flow**
+                - Use `{format_value(mic_diameter)}` from **MIC diameter** for size/clearance comparison.
+                - Use `{format_value(roundness_mzc)}` from **MZC roundness error** for roundness comparison.
+                - Supporting values still shown: `LSC {format_value(roundness_lsc)}` and `MCC roundness {format_value(roundness_mcc)}`.
+                """
             )
 
     with st.expander("How to interpret these numbers"):
@@ -3392,11 +3529,11 @@ def main() -> None:
             st.caption("Using fixed defaults: blur 5, Canny sigma 0.33, morphology 3.")
         measurement_target = st.radio(
             "Measurement target",
-            ["Inner/opening rim", "Auto", "Outer pipe diameter"],
+            ["Inner/opening rim", "Outer pipe diameter"],
             index=0,
             help=(
-                "Inner/opening rim keeps the current stable behavior. Auto uses the outer wall when the wall guide finds it. "
-                "Outer pipe diameter requests the outer wall and falls back if that edge is not clear."
+                "Choose explicitly whether you want the inner/opening rim or the outer pipe diameter. "
+                "Outer pipe diameter uses the wall guide and falls back if that edge is not clear."
             ),
         )
         st.caption("Pixel inspection runs automatically after upload.")
@@ -3437,14 +3574,6 @@ def main() -> None:
     if measurement_target == "Inner/opening rim":
         test_note = f"{test_note}; target inner/opening rim"
         resolved_feature_type = "inner"
-    elif measurement_target == "Auto":
-        if wall_target_detection is not None:
-            raw_test = build_outer_wall_measurement(inner_reference_measurement, wall_target_detection)
-            test_note = f"{test_note}; auto target selected outer pipe diameter from wall guide"
-            resolved_feature_type = "outer"
-        else:
-            test_note = f"{test_note}; auto target fell back to inner/opening rim"
-            resolved_feature_type = "inner"
     elif measurement_target == "Outer pipe diameter":
         if wall_target_detection is not None:
             raw_test = build_outer_wall_measurement(inner_reference_measurement, wall_target_detection)
@@ -3545,7 +3674,7 @@ def main() -> None:
     unit = "mm" if mm_per_pixel is not None else "px"
 
     if mm_per_pixel is not None:
-        render_roundness_evaluation(test_measurement, unit, resolved_feature_type)
+        roundness_summary = render_roundness_evaluation(test_measurement, unit, resolved_feature_type)
         st.subheader("OSTB Standards Check")
         if standards_contract is None:
             st.error("The OSTB standards data package is missing or invalid, so tolerance comparison is unavailable.")
@@ -3553,11 +3682,16 @@ def main() -> None:
             with st.expander("Choose any mapped standard and check result", expanded=True):
                 st.caption(
                     "Formula standards allow manual nominal input within their OT range. "
-                    "Lookup standards use the nominal values extracted from the table. "
-                    "If no diameter tolerance formula exists in the strict contract, the app shows the mapped row without guessing pass/fail."
+                    "Lookup standards use explicit row ranges only when the selected row actually contains one. "
+                    "If no explicit lookup range or formula exists, the app shows the mapped row as reference only."
                 )
                 try:
-                    tolerance_report = render_contract_tolerance_inputs(test_measurement, standards_contract)
+                    tolerance_report = render_contract_tolerance_inputs(
+                        test_measurement,
+                        standards_contract,
+                        suggested_nominal_mm=float(roundness_summary["size_metric_value"]) if roundness_summary is not None else None,
+                        feature_type=resolved_feature_type,
+                    )
                     if tolerance_report is not None:
                         standard_label = tolerance_report["standard_label"]
                         render_standard_check_overlay(tolerance_report)
