@@ -1,0 +1,879 @@
+{
+  "metadata": {
+    "source": "unused/TOLERANSTABELL.xlsx via ovality_lookup.json extracted workbook values",
+    "purpose": "Diameter tolerance lookup rows used by app.py when standards.json has lookup entries but no diameter_tolerance classes.",
+    "metric": "outside_diameter",
+    "unit": "mm",
+    "rules": [
+      "No interpolation is performed; rows are matched by selected standard id and nominal diameter.",
+      "For rows with extracted OD max/min, those values are used directly.",
+      "For rows with extracted D2 range limits only, min/max are reconstructed as nominal +/- limit/2 to match the workbook selected-output pattern.",
+      "Formula standards continue to use standards.json diameter_tolerance classes and do not require rows here."
+    ]
+  },
+  "standards": {
+    "3": {
+      "sheet": "3",
+      "mode": "lookup_table",
+      "entries": [
+        {
+          "source_row": 10,
+          "nominal_inch": "⅜",
+          "nominal_mm": 17.1,
+          "min_diameter_mm": 16.3,
+          "max_diameter_mm": 17.5,
+          "diameter_range_mm": 1.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 11,
+          "nominal_inch": "½",
+          "nominal_mm": 21.3,
+          "min_diameter_mm": 20.5,
+          "max_diameter_mm": 21.7,
+          "diameter_range_mm": 1.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 12,
+          "nominal_inch": "¾",
+          "nominal_mm": 26.7,
+          "min_diameter_mm": 25.9,
+          "max_diameter_mm": 27.1,
+          "diameter_range_mm": 1.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 13,
+          "nominal_inch": "1",
+          "nominal_mm": 33.4,
+          "min_diameter_mm": 32.6,
+          "max_diameter_mm": 33.8,
+          "diameter_range_mm": 1.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 14,
+          "nominal_inch": "1¼",
+          "nominal_mm": 42.16,
+          "min_diameter_mm": 41.36,
+          "max_diameter_mm": 42.56,
+          "diameter_range_mm": 1.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 15,
+          "nominal_inch": "1½",
+          "nominal_mm": 48.26,
+          "min_diameter_mm": 47.46,
+          "max_diameter_mm": 48.66,
+          "diameter_range_mm": 1.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 16,
+          "nominal_inch": "2",
+          "nominal_mm": 60.33,
+          "min_diameter_mm": 59.53,
+          "max_diameter_mm": 61.13,
+          "diameter_range_mm": 1.6,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 17,
+          "nominal_inch": "2½",
+          "nominal_mm": 73.02,
+          "min_diameter_mm": 72.22,
+          "max_diameter_mm": 73.82,
+          "diameter_range_mm": 1.6,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 18,
+          "nominal_inch": "3",
+          "nominal_mm": 88.9,
+          "min_diameter_mm": 88.1,
+          "max_diameter_mm": 89.7,
+          "diameter_range_mm": 1.6,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 19,
+          "nominal_inch": "3½",
+          "nominal_mm": 101.6,
+          "min_diameter_mm": 100.8,
+          "max_diameter_mm": 102.4,
+          "diameter_range_mm": 1.6,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 20,
+          "nominal_inch": "4",
+          "nominal_mm": 114.3,
+          "min_diameter_mm": 113.5,
+          "max_diameter_mm": 115.1,
+          "diameter_range_mm": 1.6,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 21,
+          "nominal_inch": "5",
+          "nominal_mm": 141.3,
+          "min_diameter_mm": 140.5,
+          "max_diameter_mm": 142.9,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 22,
+          "nominal_inch": "6",
+          "nominal_mm": 168.27,
+          "min_diameter_mm": 167.47,
+          "max_diameter_mm": 169.87,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 23,
+          "nominal_inch": "8",
+          "nominal_mm": 219.08,
+          "min_diameter_mm": 218.28,
+          "max_diameter_mm": 220.68,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 24,
+          "nominal_inch": "10",
+          "nominal_mm": 273.05,
+          "min_diameter_mm": 272.25,
+          "max_diameter_mm": 275.45,
+          "diameter_range_mm": 3.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 25,
+          "nominal_inch": "12",
+          "nominal_mm": 323.85,
+          "min_diameter_mm": 323.05,
+          "max_diameter_mm": 326.25,
+          "diameter_range_mm": 3.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 26,
+          "nominal_inch": "14",
+          "nominal_mm": 355.6,
+          "min_diameter_mm": 354.8,
+          "max_diameter_mm": 358.0,
+          "diameter_range_mm": 3.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 27,
+          "nominal_inch": "16",
+          "nominal_mm": 406.4,
+          "min_diameter_mm": 405.6,
+          "max_diameter_mm": 408.8,
+          "diameter_range_mm": 3.2,
+          "source": "extracted_od_min_max"
+        }
+      ]
+    },
+    "3.1": {
+      "sheet": "3.1",
+      "mode": "lookup_table",
+      "entries": [
+        {
+          "source_row": 20,
+          "nominal_inch": "⅜",
+          "nominal_mm": 17.1,
+          "min_diameter_mm": 16.99,
+          "max_diameter_mm": 17.2,
+          "diameter_range_mm": 0.21,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 21,
+          "nominal_inch": "½",
+          "nominal_mm": 21.3,
+          "min_diameter_mm": 21.19,
+          "max_diameter_mm": 21.4,
+          "diameter_range_mm": 0.21,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 22,
+          "nominal_inch": "¾",
+          "nominal_mm": 26.7,
+          "min_diameter_mm": 26.55,
+          "max_diameter_mm": 26.85,
+          "diameter_range_mm": 0.3,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 23,
+          "nominal_inch": "1",
+          "nominal_mm": 33.4,
+          "min_diameter_mm": 33.25,
+          "max_diameter_mm": 33.55,
+          "diameter_range_mm": 0.3,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 24,
+          "nominal_inch": "1¼",
+          "nominal_mm": 42.16,
+          "min_diameter_mm": 41.96,
+          "max_diameter_mm": 42.36,
+          "diameter_range_mm": 0.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 25,
+          "nominal_inch": "1½",
+          "nominal_mm": 48.26,
+          "min_diameter_mm": 48.06,
+          "max_diameter_mm": 48.46,
+          "diameter_range_mm": 0.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 26,
+          "nominal_inch": "2",
+          "nominal_mm": 60.33,
+          "min_diameter_mm": 60.08,
+          "max_diameter_mm": 60.58,
+          "diameter_range_mm": 0.5,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 27,
+          "nominal_inch": "2½",
+          "nominal_mm": 73.02,
+          "min_diameter_mm": 72.22,
+          "max_diameter_mm": 73.32,
+          "diameter_range_mm": 1.1,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 28,
+          "nominal_inch": "3",
+          "nominal_mm": 88.9,
+          "min_diameter_mm": 88.52,
+          "max_diameter_mm": 89.28,
+          "diameter_range_mm": 0.76,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 29,
+          "nominal_inch": "3½",
+          "nominal_mm": 101.6,
+          "min_diameter_mm": 100.96,
+          "max_diameter_mm": 101.98,
+          "diameter_range_mm": 1.02,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 30,
+          "nominal_inch": "4",
+          "nominal_mm": 114.3,
+          "min_diameter_mm": 113.66,
+          "max_diameter_mm": 114.68,
+          "diameter_range_mm": 1.02,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 31,
+          "nominal_inch": "5",
+          "nominal_mm": 141.3,
+          "min_diameter_mm": 140.66,
+          "max_diameter_mm": 141.68,
+          "diameter_range_mm": 1.02,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 32,
+          "nominal_inch": "6",
+          "nominal_mm": 168.27,
+          "min_diameter_mm": 167.63,
+          "max_diameter_mm": 168.65,
+          "diameter_range_mm": 1.02,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 33,
+          "nominal_inch": "8",
+          "nominal_mm": 219.08,
+          "min_diameter_mm": 217.94,
+          "max_diameter_mm": 219.46,
+          "diameter_range_mm": 1.52,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 34,
+          "nominal_inch": "10",
+          "nominal_mm": 273.05,
+          "min_diameter_mm": 271.91,
+          "max_diameter_mm": 273.43,
+          "diameter_range_mm": 1.52,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 35,
+          "nominal_inch": "12",
+          "nominal_mm": 323.85,
+          "min_diameter_mm": 322.71,
+          "max_diameter_mm": 324.23,
+          "diameter_range_mm": 1.52,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 36,
+          "nominal_inch": "14",
+          "nominal_mm": 355.6,
+          "min_diameter_mm": 354.46,
+          "max_diameter_mm": 355.98,
+          "diameter_range_mm": 1.52,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 37,
+          "nominal_inch": "16",
+          "nominal_mm": 406.4,
+          "min_diameter_mm": 405.26,
+          "max_diameter_mm": 406.78,
+          "diameter_range_mm": 1.52,
+          "source": "extracted_od_min_max"
+        }
+      ]
+    },
+    "5": {
+      "sheet": "5",
+      "mode": "lookup_table",
+      "entries": [
+        {
+          "source_row": 10,
+          "nominal_inch": "1",
+          "nominal_mm": 33.4,
+          "min_diameter_mm": 32.6,
+          "max_diameter_mm": 35.0,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 11,
+          "nominal_inch": "1¼",
+          "nominal_mm": 42.16,
+          "min_diameter_mm": 41.36,
+          "max_diameter_mm": 43.76,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 12,
+          "nominal_inch": "1½",
+          "nominal_mm": 48.26,
+          "min_diameter_mm": 47.46,
+          "max_diameter_mm": 49.86,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 13,
+          "nominal_inch": "2",
+          "nominal_mm": 60.33,
+          "min_diameter_mm": 59.53,
+          "max_diameter_mm": 61.93,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 14,
+          "nominal_inch": "2½",
+          "nominal_mm": 73.02,
+          "min_diameter_mm": 72.22,
+          "max_diameter_mm": 74.62,
+          "diameter_range_mm": 2.4,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 15,
+          "nominal_inch": "3",
+          "nominal_mm": 88.9,
+          "min_diameter_mm": 87.3,
+          "max_diameter_mm": 90.5,
+          "diameter_range_mm": 3.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 16,
+          "nominal_inch": "3½",
+          "nominal_mm": 101.6,
+          "min_diameter_mm": 100.0,
+          "max_diameter_mm": 103.2,
+          "diameter_range_mm": 3.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 17,
+          "nominal_inch": "4",
+          "nominal_mm": 114.3,
+          "min_diameter_mm": 112.7,
+          "max_diameter_mm": 115.9,
+          "diameter_range_mm": 3.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 18,
+          "nominal_inch": "5",
+          "nominal_mm": 141.3,
+          "min_diameter_mm": 139.7,
+          "max_diameter_mm": 143.7,
+          "diameter_range_mm": 4.0,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 19,
+          "nominal_inch": "6",
+          "nominal_mm": 168.27,
+          "min_diameter_mm": 166.67,
+          "max_diameter_mm": 170.67,
+          "diameter_range_mm": 4.0,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 20,
+          "nominal_inch": "8",
+          "nominal_mm": 219.08,
+          "min_diameter_mm": 217.48,
+          "max_diameter_mm": 221.48,
+          "diameter_range_mm": 4.0,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 21,
+          "nominal_inch": "10",
+          "nominal_mm": 273.05,
+          "min_diameter_mm": 269.85,
+          "max_diameter_mm": 277.05,
+          "diameter_range_mm": 7.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 22,
+          "nominal_inch": "12",
+          "nominal_mm": 323.85,
+          "min_diameter_mm": 320.65,
+          "max_diameter_mm": 327.85,
+          "diameter_range_mm": 7.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 23,
+          "nominal_inch": "14",
+          "nominal_mm": 355.6,
+          "min_diameter_mm": 352.4,
+          "max_diameter_mm": 359.6,
+          "diameter_range_mm": 7.2,
+          "source": "extracted_od_min_max"
+        },
+        {
+          "source_row": 24,
+          "nominal_inch": "16",
+          "nominal_mm": 406.4,
+          "min_diameter_mm": 403.2,
+          "max_diameter_mm": 410.4,
+          "diameter_range_mm": 7.2,
+          "source": "extracted_od_min_max"
+        }
+      ]
+    },
+    "7": {
+      "sheet": "7",
+      "mode": "lookup_table",
+      "entries": [
+        {
+          "source_row": 4,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 33.7,
+          "min_diameter_mm": 59.697,
+          "max_diameter_mm": 60.903,
+          "diameter_range_mm": 1.206,
+          "source": "extracted_primary_od_min_max"
+        },
+        {
+          "source_row": 4,
+          "nominal_mm": 33.7,
+          "secondary_nominal_mm": 33.7,
+          "min_diameter_mm": 33.2,
+          "max_diameter_mm": 34.2,
+          "diameter_range_mm": 1.0,
+          "source": "extracted_secondary_od_min_max"
+        },
+        {
+          "source_row": 5,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 48.3,
+          "min_diameter_mm": 59.697,
+          "max_diameter_mm": 60.903,
+          "diameter_range_mm": 1.206,
+          "source": "extracted_primary_od_min_max"
+        },
+        {
+          "source_row": 5,
+          "nominal_mm": 48.3,
+          "secondary_nominal_mm": 48.3,
+          "min_diameter_mm": 47.8,
+          "max_diameter_mm": 48.8,
+          "diameter_range_mm": 1.0,
+          "source": "extracted_secondary_od_min_max"
+        },
+        {
+          "source_row": 6,
+          "nominal_mm": 88.9,
+          "secondary_nominal_mm": 60.3,
+          "min_diameter_mm": 88.011,
+          "max_diameter_mm": 89.789,
+          "diameter_range_mm": 1.778,
+          "source": "extracted_primary_od_min_max"
+        },
+        {
+          "source_row": 6,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 60.3,
+          "min_diameter_mm": 59.697,
+          "max_diameter_mm": 60.903,
+          "diameter_range_mm": 1.206,
+          "source": "extracted_secondary_od_min_max"
+        },
+        {
+          "source_row": 7,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 60.3,
+          "min_diameter_mm": 113.157,
+          "max_diameter_mm": 115.443,
+          "diameter_range_mm": 2.286,
+          "source": "extracted_primary_od_min_max"
+        },
+        {
+          "source_row": 7,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 60.3,
+          "min_diameter_mm": 59.697,
+          "max_diameter_mm": 60.903,
+          "diameter_range_mm": 1.206,
+          "source": "extracted_secondary_od_min_max"
+        },
+        {
+          "source_row": 8,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 88.9,
+          "min_diameter_mm": 113.157,
+          "max_diameter_mm": 115.443,
+          "diameter_range_mm": 2.286,
+          "source": "extracted_primary_od_min_max"
+        },
+        {
+          "source_row": 8,
+          "nominal_mm": 88.9,
+          "secondary_nominal_mm": 88.9,
+          "min_diameter_mm": 88.011,
+          "max_diameter_mm": 89.789,
+          "diameter_range_mm": 1.778,
+          "source": "extracted_secondary_od_min_max"
+        },
+        {
+          "source_row": 9,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 114.3,
+          "min_diameter_mm": 166.617,
+          "max_diameter_mm": 169.983,
+          "diameter_range_mm": 3.366,
+          "source": "extracted_primary_od_min_max"
+        },
+        {
+          "source_row": 9,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 114.3,
+          "min_diameter_mm": 113.157,
+          "max_diameter_mm": 115.443,
+          "diameter_range_mm": 2.286,
+          "source": "extracted_secondary_od_min_max"
+        },
+        {
+          "source_row": 10,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 139.7,
+          "min_diameter_mm": 166.617,
+          "max_diameter_mm": 169.983,
+          "diameter_range_mm": 3.366,
+          "source": "extracted_primary_od_min_max"
+        },
+        {
+          "source_row": 10,
+          "nominal_mm": 139.7,
+          "secondary_nominal_mm": 139.7,
+          "min_diameter_mm": 138.303,
+          "max_diameter_mm": 141.097,
+          "diameter_range_mm": 2.794,
+          "source": "extracted_secondary_od_min_max"
+        }
+      ]
+    },
+    "8": {
+      "sheet": "8",
+      "mode": "lookup_table",
+      "entries": [
+        {
+          "source_row": 16,
+          "dn": 50,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 60.3,
+          "min_diameter_mm": 59.697,
+          "max_diameter_mm": 60.903,
+          "diameter_range_mm": 1.206,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 17,
+          "dn": 65,
+          "nominal_mm": 76.1,
+          "secondary_nominal_mm": 76.1,
+          "min_diameter_mm": 75.339,
+          "max_diameter_mm": 76.861,
+          "diameter_range_mm": 1.522,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 18,
+          "dn": 80,
+          "nominal_mm": 88.9,
+          "secondary_nominal_mm": 88.9,
+          "min_diameter_mm": 88.011,
+          "max_diameter_mm": 89.789,
+          "diameter_range_mm": 1.778,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 19,
+          "dn": 100,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 114.3,
+          "min_diameter_mm": 113.157,
+          "max_diameter_mm": 115.443,
+          "diameter_range_mm": 2.286,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 20,
+          "dn": 125,
+          "nominal_mm": 139.7,
+          "secondary_nominal_mm": 139.7,
+          "min_diameter_mm": 138.303,
+          "max_diameter_mm": 141.097,
+          "diameter_range_mm": 2.794,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 21,
+          "dn": 150,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 168.3,
+          "min_diameter_mm": 166.617,
+          "max_diameter_mm": 169.983,
+          "diameter_range_mm": 3.366,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 22,
+          "dn": 200,
+          "nominal_mm": 219.1,
+          "secondary_nominal_mm": 219.1,
+          "min_diameter_mm": 216.909,
+          "max_diameter_mm": 221.291,
+          "diameter_range_mm": 4.382,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 23,
+          "dn": 250,
+          "nominal_mm": 273.0,
+          "secondary_nominal_mm": 273.0,
+          "min_diameter_mm": 270.27,
+          "max_diameter_mm": 275.73,
+          "diameter_range_mm": 5.46,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 24,
+          "dn": 300,
+          "nominal_mm": 323.9,
+          "secondary_nominal_mm": 323.9,
+          "min_diameter_mm": 320.661,
+          "max_diameter_mm": 327.139,
+          "diameter_range_mm": 6.478,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 25,
+          "dn": 350,
+          "nominal_mm": 355.6,
+          "secondary_nominal_mm": 355.6,
+          "min_diameter_mm": 352.044,
+          "max_diameter_mm": 359.156,
+          "diameter_range_mm": 7.112,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 26,
+          "dn": 400,
+          "nominal_mm": 406.4,
+          "secondary_nominal_mm": 406.4,
+          "min_diameter_mm": 402.336,
+          "max_diameter_mm": 410.464,
+          "diameter_range_mm": 8.128,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        }
+      ]
+    },
+    "9": {
+      "sheet": "9",
+      "mode": "lookup_table",
+      "entries": [
+        {
+          "source_row": 16,
+          "dn": 50,
+          "nominal_mm": 60.3,
+          "secondary_nominal_mm": 60.3,
+          "min_diameter_mm": 59.697,
+          "max_diameter_mm": 60.903,
+          "diameter_range_mm": 1.206,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 17,
+          "dn": 65,
+          "nominal_mm": 76.1,
+          "secondary_nominal_mm": 76.1,
+          "min_diameter_mm": 75.339,
+          "max_diameter_mm": 76.861,
+          "diameter_range_mm": 1.522,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 18,
+          "dn": 80,
+          "nominal_mm": 88.9,
+          "secondary_nominal_mm": 88.9,
+          "min_diameter_mm": 88.011,
+          "max_diameter_mm": 89.789,
+          "diameter_range_mm": 1.778,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 19,
+          "dn": 100,
+          "nominal_mm": 114.3,
+          "secondary_nominal_mm": 114.3,
+          "min_diameter_mm": 113.157,
+          "max_diameter_mm": 115.443,
+          "diameter_range_mm": 2.286,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 20,
+          "dn": 125,
+          "nominal_mm": 139.7,
+          "secondary_nominal_mm": 139.7,
+          "min_diameter_mm": 138.303,
+          "max_diameter_mm": 141.097,
+          "diameter_range_mm": 2.794,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 21,
+          "dn": 150,
+          "nominal_mm": 168.3,
+          "secondary_nominal_mm": 168.3,
+          "min_diameter_mm": 166.617,
+          "max_diameter_mm": 169.983,
+          "diameter_range_mm": 3.366,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 22,
+          "dn": 200,
+          "nominal_mm": 219.1,
+          "secondary_nominal_mm": 219.1,
+          "min_diameter_mm": 216.909,
+          "max_diameter_mm": 221.291,
+          "diameter_range_mm": 4.382,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 23,
+          "dn": 250,
+          "nominal_mm": 273.0,
+          "secondary_nominal_mm": 273.0,
+          "min_diameter_mm": 270.27,
+          "max_diameter_mm": 275.73,
+          "diameter_range_mm": 5.46,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 24,
+          "dn": 300,
+          "nominal_mm": 323.9,
+          "secondary_nominal_mm": 323.9,
+          "min_diameter_mm": 320.661,
+          "max_diameter_mm": 327.139,
+          "diameter_range_mm": 6.478,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 25,
+          "dn": 350,
+          "nominal_mm": 355.6,
+          "secondary_nominal_mm": 355.6,
+          "min_diameter_mm": 352.044,
+          "max_diameter_mm": 359.156,
+          "diameter_range_mm": 7.112,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        },
+        {
+          "source_row": 26,
+          "dn": 400,
+          "nominal_mm": 406.4,
+          "secondary_nominal_mm": 406.4,
+          "min_diameter_mm": 402.336,
+          "max_diameter_mm": 410.464,
+          "diameter_range_mm": 8.128,
+          "source": "d2_limit_reconstructed_nominal_plus_minus_half_range",
+          "formula": "min_diameter_mm = nominal_mm - primary_limit_mm / 2; max_diameter_mm = nominal_mm + primary_limit_mm / 2"
+        }
+      ]
+    }
+  }
+}

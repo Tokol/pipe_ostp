@@ -44,7 +44,7 @@
       "return ambiguity when more than one standard or entry remains"
     ],
     "numeric_match": {
-      "default_tolerance_mm": 0.000001,
+      "default_tolerance_mm": 1e-06,
       "rule": "Two numeric values match when abs(a - b) <= default_tolerance_mm."
     },
     "out_of_range": {
@@ -114,7 +114,13 @@
         "D3",
         "D4"
       ],
-      "error_on_missing_class": true
+      "error_on_missing_class": true,
+      "lookup_table": {
+        "lookup_file": "diameter_lookup.json",
+        "matching": "Match by standard_id and selected entry nominal_mm/secondary_nominal_mm. Do not interpolate.",
+        "formula": "measured_diameter_mm must be between extracted min_diameter_mm and max_diameter_mm.",
+        "applies_when": "Use when a standard has lookup rows but no diameter_tolerance classes in standards.json."
+      }
     },
     "geometry_tolerance_fields": {
       "field_suffix": "_tolerance_mm",
@@ -143,6 +149,48 @@
         "unit": "mm",
         "formula": "measured_thickness_mm >= min_mm"
       }
+    },
+    "ovality_tolerance": {
+      "metric": "difference_between_major_and_minor_outside_diameter",
+      "recommended_measured_value": "mzc_roundness_mm",
+      "modes": {
+        "formula": {
+          "formula": "limit_mm = nominal_mm * percent_of_od / 100",
+          "required_inputs": [
+            "nominal_mm",
+            "percent_of_od"
+          ]
+        },
+        "diameter_tolerance_range": {
+          "formula": "limit_mm = max_diameter_mm - min_diameter_mm for the selected diameter tolerance rule",
+          "required_inputs": [
+            "min_diameter_mm",
+            "max_diameter_mm"
+          ]
+        },
+        "explicit": {
+          "formula": "measured_ovality_mm <= limit_mm",
+          "required_inputs": [
+            "limit_mm"
+          ]
+        },
+        "excluded": {
+          "rule": "Do not evaluate ovality for pass/fail; preserve source note for traceability."
+        },
+        "requires_source_enrichment": {
+          "rule": "Do not evaluate ovality until the full per-entry source data is represented in standards.json."
+        },
+        "lookup_table": {
+          "lookup_file": "ovality_lookup.json",
+          "matching": "Match by standard_id and selected entry nominal_mm/secondary_nominal_mm. Do not interpolate.",
+          "formula": "measured_ovality_mm <= extracted limit_mm or primary/secondary_limit_mm",
+          "required_inputs": [
+            "standard_id",
+            "nominal_mm"
+          ]
+        }
+      },
+      "pass_fail_rule": "roundness_ok = measured_ovality_mm <= limit_mm when a limit is evaluable; otherwise roundness_ok is null/not evaluated."
     }
   },
   "traceability": {

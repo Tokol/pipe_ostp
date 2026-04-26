@@ -73,6 +73,18 @@
             "source_text": "D4    (± 0,5% min ± 0,1)"
           }
         }
+      },
+      "ovality_tolerance": {
+        "mode": "diameter_tolerance_range",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "source_rows": [
+          61,
+          62,
+          71
+        ],
+        "formula": "limit_mm = selected allowed max_diameter_mm - selected allowed min_diameter_mm",
+        "source_text": "Workbook row Ovalitet/Epäpyöreys is calculated as selected max diameter minus selected min diameter. EN 10217-7 Punkt/kohta 8.8.4.5, D>406.4 independent ovality tolerance 2% not considered.",
+        "note": "The app follows the workbook displayed ovality value from the selected diameter tolerance range; it does not apply the separate D>406.4 2% ovality rule."
       }
     },
     {
@@ -202,6 +214,18 @@
             "source_text": "D2  ± 1,0% min ± 0,5"
           }
         }
+      },
+      "ovality_tolerance": {
+        "mode": "diameter_tolerance_range",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "source_rows": [
+          38,
+          39,
+          48
+        ],
+        "formula": "limit_mm = selected allowed max_diameter_mm - selected allowed min_diameter_mm",
+        "source_text": "Workbook row Ovalitet/Epäpyöreys is calculated as selected max diameter minus selected min diameter. EN 10217-7 Punkt/kohta 8.8.4.5, D>406.4 independent ovality tolerance 2% not considered.",
+        "note": "The app follows the workbook displayed ovality value from the selected diameter tolerance range; it does not apply the separate D>406.4 2% ovality rule."
       }
     },
     {
@@ -543,7 +567,20 @@
           }
         }
       ],
-      "type": "pipe"
+      "type": "pipe",
+      "ovality_tolerance": {
+        "mode": "lookup_table",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "source_rows": [
+          34,
+          37,
+          38,
+          43
+        ],
+        "source_text": "ASTM A999 tolerance row includes Ovalitet/epapyoreys, but ASTM A928 note says tolerances except ovality.",
+        "note": "Lookup table extracted from XLSX. Conditional wall-ratio branches require selected wall thickness when applicable.",
+        "lookup_ref": "ovality_lookup.json"
+      }
     },
     {
       "id": "3.1",
@@ -884,7 +921,21 @@
           }
         }
       ],
-      "type": "pipe"
+      "type": "pipe",
+      "ovality_tolerance": {
+        "mode": "lookup_table",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "formula": "limit_mm = nominal_mm * percent_of_od / 100",
+        "percent_of_od": 2.0,
+        "source_rows": [
+          52,
+          53,
+          65
+        ],
+        "source_text": "Thin-wall pipe (ovality max 2% of OD); Out-of-Roundness-Difference between major and minor outside diameter",
+        "lookup_ref": "ovality_lookup.json",
+        "note": "Lookup table extracted from XLSX. Conditional wall-ratio branches require selected wall thickness when applicable."
+      }
     },
     {
       "id": "4",
@@ -1508,6 +1559,15 @@
             "source_text": "D4  ± 0,5% min ± 0,1"
           }
         }
+      },
+      "ovality_tolerance": {
+        "mode": "diameter_tolerance_range",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "formula": "limit_mm = max_diameter_mm - min_diameter_mm for the selected diameter tolerance rule",
+        "source_rows": [
+          117
+        ],
+        "source_text": "Epäpyöreys/Ovalitet follows selected diameter tolerance range in the source sheet."
       }
     },
     {
@@ -1754,7 +1814,18 @@
           }
         }
       ],
-      "type": "fitting"
+      "type": "fitting",
+      "ovality_tolerance": {
+        "mode": "lookup_table",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "source_rows": [
+          38
+        ],
+        "source_text": "Epäpyöreys/Ovalitet selected output cell in sheet 5.",
+        "note": "Lookup table extracted from XLSX OD max/min or matching D2 selected-output formulas.",
+        "selected_example_limit_mm": 2.4,
+        "lookup_ref": "ovality_lookup.json"
+      }
     },
     {
       "id": "6",
@@ -2257,6 +2328,15 @@
             "source_text": "D4  ± 0,5% min ± 0,1"
           }
         }
+      },
+      "ovality_tolerance": {
+        "mode": "diameter_tolerance_range",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "formula": "limit_mm = max_diameter_mm - min_diameter_mm for the selected diameter tolerance rule",
+        "source_rows": [
+          94
+        ],
+        "source_text": "Epäpyöreys/Ovalitet follows selected diameter tolerance range in the source sheet."
       }
     },
     {
@@ -2322,6 +2402,17 @@
             "source_text": "D2  ± 1,0% min ± 0,5"
           }
         }
+      },
+      "ovality_tolerance": {
+        "mode": "lookup_table",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "formula": "limit_mm = max_diameter_mm - min_diameter_mm for the selected diameter tolerance rule",
+        "source_rows": [
+          41
+        ],
+        "source_text": "Ovalitet/Epäpyöreys follows selected diameter tolerance range for the selected main/secondary diameter in the source sheet.",
+        "lookup_ref": "ovality_lookup.json",
+        "note": "Lookup table extracted from XLSX OD max/min or matching D2 selected-output formulas."
       }
     },
     {
@@ -2504,7 +2595,18 @@
           "f": 400
         }
       ],
-      "type": "tee"
+      "type": "tee",
+      "ovality_tolerance": {
+        "mode": "lookup_table",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "source_rows": [
+          81,
+          87
+        ],
+        "source_text": "Epäpyöreys/Ovalitet selected output cells exist for main and lower diameters in sheet 8.",
+        "note": "Lookup table extracted from XLSX OD max/min or matching D2 selected-output formulas.",
+        "lookup_ref": "ovality_lookup.json"
+      }
     },
     {
       "id": "9",
@@ -2634,7 +2736,18 @@
           "f": 400
         }
       ],
-      "type": "tee"
+      "type": "tee",
+      "ovality_tolerance": {
+        "mode": "lookup_table",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "source_rows": [
+          41,
+          47
+        ],
+        "source_text": "Epäpyöreys/Ovalitet selected output cells exist for main and lower diameters in sheet 9.",
+        "note": "Lookup table extracted from XLSX OD max/min or matching D2 selected-output formulas.",
+        "lookup_ref": "ovality_lookup.json"
+      }
     },
     {
       "id": "10",
@@ -2692,6 +2805,15 @@
             "source_text": "D2  ± 1,0% min ± 0,5"
           }
         }
+      },
+      "ovality_tolerance": {
+        "mode": "diameter_tolerance_range",
+        "metric": "difference_between_major_and_minor_outside_diameter",
+        "formula": "limit_mm = max_diameter_mm - min_diameter_mm for the selected diameter tolerance rule",
+        "source_rows": [
+          76
+        ],
+        "source_text": "Epäpyöreys/Ovalitet follows selected diameter tolerance range in the source sheet."
       }
     }
   ]
