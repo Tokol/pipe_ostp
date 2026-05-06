@@ -30,6 +30,14 @@ except Exception:  # pragma: no cover - app still works with algebraic fit fallb
     least_squares = None
     minimize = None
 
+try:
+    from ultralytics import YOLO
+except Exception as exc:  # pragma: no cover - optional model inference dependency.
+    YOLO = None
+    YOLO_IMPORT_ERROR = exc
+else:
+    YOLO_IMPORT_ERROR = None
+
 
 if CV2_IMPORT_ERROR is not None:  # pragma: no cover - UI guard for missing host dependency.
     st.error(
@@ -44,6 +52,7 @@ if CV2_IMPORT_ERROR is not None:  # pragma: no cover - UI guard for missing host
 APP_DIR = Path(__file__).resolve().parent
 CALIBRATION_PATH = APP_DIR / "camera_calibration.json"
 SAVED_SCALE_PATH = APP_DIR / "saved_scale_config.json"
+CHECKERBOARD_SCALE_CANDIDATE_PATH = APP_DIR / "saved_scale_config_candidate.json"
 TOLERANCE_PATH = APP_DIR / "TOLERANSTABELL.xlsx"
 CONTRACT_DIR = APP_DIR / "ostb_data_map_contract"
 STANDARDS_CONTRACT_PATH = CONTRACT_DIR / "standards.json"
@@ -54,6 +63,9 @@ NOVIA_LOGO_PATH = APP_DIR / "images" / "novia_uas.png"
 OSTP_LOGO_PATH = APP_DIR / "images" / "ostp_logo.png"
 SUCCESS_GIF_PATH = APP_DIR / "images" / "sucess_mario.gif"
 FAIL_GIF_PATH = APP_DIR / "images" / "pie_fail_match_success.gif"
+PIPE_SEGMENTATION_MODEL_CANDIDATES = [
+    APP_DIR / "models" / "pipe_edge_yolo11n_seg_best.pt",
+]
 STANDARD_IMAGE_BY_ID = {
     "1": "1t3.jpg",
     "2": "1t3.jpg",
@@ -206,6 +218,26 @@ def load_saved_scale_config() -> Optional[Dict[str, object]]:
     return payload
 
 
+@st.cache_data
+def load_checkerboard_scale_candidate() -> Optional[Dict[str, object]]:
+    if not CHECKERBOARD_SCALE_CANDIDATE_PATH.exists():
+        return None
+    try:
+        payload = json.loads(CHECKERBOARD_SCALE_CANDIDATE_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    try:
+        mm_per_pixel = float(payload.get("mm_per_pixel", 0.0))
+    except (TypeError, ValueError):
+        return None
+    if mm_per_pixel <= 0:
+        return None
+    payload["mm_per_pixel"] = mm_per_pixel
+    return payload
+
+
 def save_scale_config(
     mm_per_pixel: float,
     source: str,
@@ -226,6 +258,20 @@ def save_scale_config(
     }
     SAVED_SCALE_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     load_saved_scale_config.clear()
+
+
+def pipe_segmentation_model_path() -> Optional[Path]:
+    for path in PIPE_SEGMENTATION_MODEL_CANDIDATES:
+        if path.exists():
+            return path
+    return None
+
+
+@st.cache_resource
+def load_pipe_segmentation_model(model_path: str):
+    if YOLO is None:
+        raise RuntimeError(f"Ultralytics is not available: {YOLO_IMPORT_ERROR}")
+    return YOLO(model_path)
 
 
 def load_standards_contract() -> Tuple[Dict[str, object], Dict[str, object]]:
@@ -434,6 +480,365 @@ def detect_pipe_roi(
         x2,
         y2,
     ), f"auto ROI via {method}: center=({cx:.1f}, {cy:.1f}), seed_radius={radius:.1f}px"
+
+
+def roi_bbox_from_percent(
+    image_bgr: np.ndarray,
+    center_x_percent: float,
+    center_y_percent: float,
+    width_percent: float,
+    height_percent: float,
+) -> Tuple[int, int, int, int]:
+    height, width = image_bgr.shape[:2]
+    crop_width = max(24, int(round(width * max(1.0, width_percent) / 100.0)))
+    crop_height = max(24, int(round(height * max(1.0, height_percent) / 100.0)))
+    center_x = width * center_x_percent / 100.0
+    center_y = height * center_y_percent / 100.0
+    x1 = max(0, int(round(center_x - crop_width / 2.0)))
+    y1 = max(0, int(round(center_y - crop_height / 2.0)))
+    x2 = min(width, int(round(center_x + crop_width / 2.0)))
+    y2 = min(height, int(round(center_y + crop_height / 2.0)))
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError("Fixed pipe search window produced an empty crop.")
+    return x1, y1, x2, y2
+
+
+def detect_bright_rim_roi(
+    image_bgr: np.ndarray,
+    padding_multiplier: float = 1.40,
+) -> Tuple[Tuple[int, int, int, int], str]:
+    gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (7, 7), 0)
+    height, width = gray.shape[:2]
+    min_dim = min(width, height)
+    image_center = np.array([width / 2.0, height / 2.0], dtype=np.float32)
+    threshold = max(125.0, float(np.percentile(blur, 92)))
+    _, bright_mask = cv2.threshold(blur, threshold, 255, cv2.THRESH_BINARY)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    bright_mask = cv2.morphologyEx(bright_mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    bright_mask = cv2.morphologyEx(bright_mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    contours, hierarchy = cv2.findContours(bright_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    if hierarchy is None:
+        raise ValueError("No bright rim candidates found.")
+
+    candidates = []
+    hierarchy_rows = hierarchy[0]
+    for idx, contour in enumerate(contours):
+        if hierarchy_rows[idx][3] != -1 or len(contour) < 40:
+            continue
+        child_idx = hierarchy_rows[idx][2]
+        if child_idx < 0:
+            continue
+        points = contour.reshape(-1, 2).astype(np.float32)
+        (cx, cy), outer_radius = cv2.minEnclosingCircle(points)
+        outer_radius = float(outer_radius)
+        if outer_radius < min_dim * 0.025 or outer_radius > min_dim * 0.22:
+            continue
+        center = np.array([cx, cy], dtype=np.float32)
+        center_distance = float(np.linalg.norm(center - image_center))
+        if center_distance > min_dim * 0.34:
+            continue
+        child_ok = False
+        child_radius = 0.0
+        while child_idx >= 0:
+            child_contour = contours[child_idx]
+            child_idx = hierarchy_rows[child_idx][0]
+            if len(child_contour) < 40:
+                continue
+            child_points = child_contour.reshape(-1, 2).astype(np.float32)
+            (_, _), candidate_child_radius = cv2.minEnclosingCircle(child_points)
+            candidate_child_radius = float(candidate_child_radius)
+            ring_width = outer_radius - candidate_child_radius
+            if (
+                outer_radius * 0.45 <= candidate_child_radius <= outer_radius * 0.96
+                and max(4.0, outer_radius * 0.025) <= ring_width <= outer_radius * 0.38
+            ):
+                child_ok = True
+                child_radius = max(child_radius, candidate_child_radius)
+        if not child_ok:
+            continue
+        score = outer_radius * 30.0 + child_radius * 10.0 - center_distance
+        candidates.append((score, float(cx), float(cy), outer_radius))
+
+    if not candidates:
+        contours, _ = cv2.findContours(bright_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        for contour in contours:
+            if len(contour) < 40:
+                continue
+            area = abs(float(cv2.contourArea(contour)))
+            if area < 40:
+                continue
+            perimeter = float(cv2.arcLength(contour, closed=True))
+            if perimeter <= 0:
+                continue
+            points = contour.reshape(-1, 2).astype(np.float32)
+            (cx, cy), radius = cv2.minEnclosingCircle(points)
+            radius = float(radius)
+            if radius < min_dim * 0.025 or radius > min_dim * 0.22:
+                continue
+            center = np.array([cx, cy], dtype=np.float32)
+            center_distance = float(np.linalg.norm(center - image_center))
+            if center_distance > min_dim * 0.34:
+                continue
+            circularity = 4.0 * math.pi * area / (perimeter * perimeter)
+            fill_ratio = area / max(math.pi * radius * radius, 1.0)
+            if circularity < 0.08 or fill_ratio > 0.70:
+                continue
+            score = radius * 35.0 + area * 0.02 + circularity * 80.0 - center_distance
+            candidates.append((score, float(cx), float(cy), radius))
+
+    if not candidates:
+        raise ValueError("No centered bright rim passed the pipe filters.")
+
+    _, cx, cy, radius = max(candidates, key=lambda item: item[0])
+    half_size = int(max(80, radius * padding_multiplier))
+    x1 = max(0, int(round(cx - half_size)))
+    y1 = max(0, int(round(cy - half_size)))
+    x2 = min(width, int(round(cx + half_size)))
+    y2 = min(height, int(round(cy + half_size)))
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError("Bright rim ROI detection produced an empty crop.")
+    return (x1, y1, x2, y2), f"auto bright-rim ROI: center=({cx:.1f}, {cy:.1f}), rim_radius={radius:.1f}px"
+
+
+def detect_model_pipe_roi(
+    image_bgr: np.ndarray,
+    model,
+    padding_fraction: float = 0.15,
+    confidence: float = 0.25,
+) -> Tuple[Tuple[int, int, int, int], str]:
+    height, width = image_bgr.shape[:2]
+    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    results = model.predict(image_rgb, imgsz=1024, conf=confidence, verbose=False)
+    if not results:
+        raise ValueError("Segmentation model returned no result.")
+    result = results[0]
+    if result.masks is None or result.masks.xy is None or len(result.masks.xy) == 0:
+        raise ValueError("Segmentation model did not detect the pipe rim.")
+
+    confidences = []
+    if result.boxes is not None and result.boxes.conf is not None:
+        confidences = result.boxes.conf.detach().cpu().numpy().astype(float).tolist()
+
+    candidates = []
+    for idx, polygon in enumerate(result.masks.xy):
+        points = np.asarray(polygon, dtype=np.float32)
+        if points.ndim != 2 or points.shape[0] < 3:
+            continue
+        x_min = float(np.min(points[:, 0]))
+        y_min = float(np.min(points[:, 1]))
+        x_max = float(np.max(points[:, 0]))
+        y_max = float(np.max(points[:, 1]))
+        box_width = x_max - x_min
+        box_height = y_max - y_min
+        if box_width <= 5 or box_height <= 5:
+            continue
+        area = abs(float(cv2.contourArea(points.reshape(-1, 1, 2))))
+        conf = confidences[idx] if idx < len(confidences) else 1.0
+        candidates.append((area * max(conf, 0.01), conf, x_min, y_min, x_max, y_max))
+
+    if not candidates:
+        raise ValueError("Segmentation model detected masks, but none were usable.")
+
+    _, conf, x_min, y_min, x_max, y_max = max(candidates, key=lambda item: item[0])
+    box_width = x_max - x_min
+    box_height = y_max - y_min
+    pad = max(20.0, max(box_width, box_height) * padding_fraction)
+    x1 = max(0, int(math.floor(x_min - pad)))
+    y1 = max(0, int(math.floor(y_min - pad)))
+    x2 = min(width, int(math.ceil(x_max + pad)))
+    y2 = min(height, int(math.ceil(y_max + pad)))
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError("Segmentation model produced an empty ROI.")
+
+    return (
+        x1,
+        y1,
+        x2,
+        y2,
+    ), f"model pipe rim ROI: conf={conf:.2f}, bbox=({x1},{y1})-({x2},{y2}), padding={padding_fraction:.0%}"
+
+
+def measure_pipe_with_segmentation_model(
+    filename: str,
+    image_bytes: bytes,
+    calibration: Optional[CameraCalibration],
+    preprocess_config: PreprocessConfig,
+    model,
+    padding_fraction: float = 0.15,
+    confidence: float = 0.25,
+) -> Tuple[PipeMeasurement, Dict[str, np.ndarray], str]:
+    image = decode_image(image_bytes)
+    if image is None:
+        raise ValueError(f"Could not decode image: {filename}")
+
+    corrected = undistort_image(image, calibration)
+    height, width = corrected.shape[:2]
+    image_rgb = cv2.cvtColor(corrected, cv2.COLOR_BGR2RGB)
+    results = model.predict(image_rgb, imgsz=1024, conf=confidence, verbose=False)
+    if not results:
+        raise ValueError("Segmentation model returned no result.")
+    result = results[0]
+    if result.masks is None or result.masks.data is None or len(result.masks.data) == 0:
+        raise ValueError("Segmentation model did not detect the pipe rim mask.")
+
+    confidences = []
+    if result.boxes is not None and result.boxes.conf is not None:
+        confidences = result.boxes.conf.detach().cpu().numpy().astype(float).tolist()
+
+    mask_candidates = []
+    for idx, mask_tensor in enumerate(result.masks.data):
+        mask = mask_tensor.detach().cpu().numpy()
+        mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_NEAREST)
+        mask_u8 = (mask > 0.5).astype(np.uint8) * 255
+        area = float(np.count_nonzero(mask_u8))
+        if area < 100:
+            continue
+        conf = confidences[idx] if idx < len(confidences) else 1.0
+        mask_candidates.append((area * max(conf, 0.01), conf, mask_u8))
+    if not mask_candidates:
+        raise ValueError("Segmentation model masks were too small to measure.")
+
+    _, conf, mask_u8 = max(mask_candidates, key=lambda item: item[0])
+    contours, _ = cv2.findContours(mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours = [contour for contour in contours if len(contour) >= 40 and cv2.contourArea(contour) > 100]
+    if not contours:
+        raise ValueError("Segmentation mask has no usable outer contour.")
+    outer_seed = max(contours, key=cv2.contourArea)
+    outer_seed_points = outer_seed.reshape(-1, 2).astype(np.float32)
+    outer_seed_full = circular_smooth_points(outer_seed_points, 7)
+    seed_center_x, seed_center_y, seed_radius = fit_circle_with_outlier_trim(outer_seed_full)
+    center = np.array([seed_center_x, seed_center_y], dtype=np.float32)
+
+    max_radius = min(
+        center[0],
+        center[1],
+        width - center[0] - 1,
+        height - center[1] - 1,
+        seed_radius * 1.12,
+    )
+    if max_radius <= seed_radius * 0.35:
+        raise ValueError("Segmentation mask center/radius is not usable for radial measurement.")
+
+    inner_points = []
+    outer_points = []
+    thicknesses = []
+    angles = np.linspace(0, 2.0 * math.pi, 720, endpoint=False)
+    for angle in angles:
+        direction = np.array([math.cos(angle), math.sin(angle)], dtype=np.float32)
+        radii = np.linspace(0.0, max_radius, 520)
+        xs = np.round(center[0] + radii * direction[0]).astype(int)
+        ys = np.round(center[1] + radii * direction[1]).astype(int)
+        valid = (xs >= 0) & (xs < width) & (ys >= 0) & (ys < height)
+        if np.count_nonzero(valid) < 40:
+            continue
+        radii_v = radii[valid]
+        xs_v = xs[valid]
+        ys_v = ys[valid]
+        inside = mask_u8[ys_v, xs_v] > 0
+        indices = np.where(inside)[0]
+        if len(indices) < 5:
+            continue
+        groups = np.split(indices, np.where(np.diff(indices) > 2)[0] + 1)
+        group_candidates = []
+        for group in groups:
+            if len(group) < 5:
+                continue
+            inner_r = float(radii_v[group[0]])
+            outer_r = float(radii_v[group[-1]])
+            thickness = outer_r - inner_r
+            if thickness < max(3.0, seed_radius * 0.01):
+                continue
+            # Prefer the band whose outer edge reaches the fitted outer mask circle.
+            outer_gap = abs(outer_r - seed_radius)
+            group_candidates.append((outer_gap, -thickness, inner_r, outer_r, group))
+        if not group_candidates:
+            continue
+        _, _, inner_r, outer_r, group = min(group_candidates, key=lambda item: (item[0], item[1]))
+        inner_points.append(
+            [
+                float(center[0] + inner_r * direction[0]),
+                float(center[1] + inner_r * direction[1]),
+            ]
+        )
+        outer_points.append(
+            [
+                float(center[0] + outer_r * direction[0]),
+                float(center[1] + outer_r * direction[1]),
+            ]
+        )
+        thicknesses.append(outer_r - inner_r)
+
+    if len(inner_points) < 160 or len(outer_points) < 160:
+        raise ValueError(
+            f"Segmentation mask radial measurement found too few rim rays: {len(inner_points)}."
+        )
+
+    inner_points_full = np.array(inner_points, dtype=np.float32)
+    outer_points_full = np.array(outer_points, dtype=np.float32)
+    inner_center_x, inner_center_y, inner_radius = fit_circle_with_outlier_trim(inner_points_full)
+    outer_center_x, outer_center_y, outer_radius = fit_circle_with_outlier_trim(outer_points_full)
+    if outer_radius <= inner_radius:
+        raise ValueError("Segmentation mask produced an invalid inner/outer radius pair.")
+
+    inner_roundness = compute_roundness(inner_points_full, (inner_center_x, inner_center_y, inner_radius))
+    measurement = PipeMeasurement(
+        filename=filename,
+        center_x_px=float(inner_center_x),
+        center_y_px=float(inner_center_y),
+        radius_px=float(inner_radius),
+        diameter_px=float(2.0 * inner_radius),
+        diameter_mm=float(2.0 * inner_radius),
+        roundness_px=float(inner_roundness["roundness_px"]),
+        roundness_mm=float(inner_roundness["roundness_px"]),
+        max_abs_deviation_px=float(inner_roundness["max_abs_deviation_px"]),
+        max_abs_deviation_mm=float(inner_roundness["max_abs_deviation_px"]),
+        contour_points=inner_points_full,
+        fitting_inliers=inner_points_full,
+        signed_errors_px=inner_roundness["signed_errors_px"],
+        mm_per_pixel=1.0,
+    )
+
+    center_offset = float(
+        np.linalg.norm(
+            np.array([outer_center_x, outer_center_y], dtype=np.float32)
+            - np.array([inner_center_x, inner_center_y], dtype=np.float32)
+        )
+    )
+    thickness_array = np.array(thicknesses, dtype=np.float32)
+    wall_detection = PipeWallDetection(
+        inner_center_x_px=float(inner_center_x),
+        inner_center_y_px=float(inner_center_y),
+        inner_radius_px=float(inner_radius),
+        inner_points=inner_points_full,
+        outer_center_x_px=float(outer_center_x),
+        outer_center_y_px=float(outer_center_y),
+        outer_radius_px=float(outer_radius),
+        outer_points=outer_points_full,
+        wall_thickness_px=float(np.median(thickness_array)),
+        wall_thickness_min_px=float(np.min(thickness_array)),
+        wall_thickness_max_px=float(np.max(thickness_array)),
+        center_offset_px=center_offset,
+        method="YOLO segmentation mask radial band",
+    )
+
+    ys, xs = np.nonzero(mask_u8)
+    pad = max(20.0, max(float(np.ptp(xs)), float(np.ptp(ys))) * padding_fraction)
+    x1 = max(0, int(math.floor(float(np.min(xs)) - pad)))
+    y1 = max(0, int(math.floor(float(np.min(ys)) - pad)))
+    x2 = min(width, int(math.ceil(float(np.max(xs)) + pad)))
+    y2 = min(height, int(math.ceil(float(np.max(ys)) + pad)))
+    if x2 <= x1 or y2 <= y1:
+        x1, y1, x2, y2 = (0, 0, width, height)
+    roi_image = corrected[y1:y2, x1:x2]
+    processed = preprocess_image(roi_image, None, preprocess_config)
+    processed["full_image_bgr"] = corrected
+    processed["roi_bbox"] = (x1, y1, x2, y2)
+    processed["roi_note"] = f"model mask ROI: conf={conf:.2f}, padding={padding_fraction:.0%}"
+    processed["targeted_wall_detection"] = wall_detection
+    processed["model_mask"] = mask_u8
+
+    return measurement, processed, f"YOLO segmentation mask measurement; conf={conf:.2f}; rays={len(inner_points)}"
 
 
 def circular_smooth_points(points: np.ndarray, window: int = 5) -> np.ndarray:
@@ -961,6 +1366,347 @@ def detect_pipe_wall_rims(processed: Dict[str, np.ndarray], measurement: PipeMea
     )
 
 
+def detect_bore_and_lip_rims(
+    processed: Dict[str, np.ndarray],
+    filename: str,
+) -> Optional[Tuple[PipeMeasurement, PipeWallDetection]]:
+    image_bgr = processed["image_bgr"]
+    x1, y1, _, _ = processed.get("roi_bbox", (0, 0, image_bgr.shape[1], image_bgr.shape[0]))
+    gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (7, 7), 0)
+    height, width = gray.shape[:2]
+    image_center = np.array([width / 2.0, height / 2.0], dtype=np.float32)
+    min_dim = min(width, height)
+
+    bright_threshold = max(155.0, float(np.percentile(blur, 88)))
+    _, bright_mask = cv2.threshold(blur, bright_threshold, 255, cv2.THRESH_BINARY)
+    bright_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    bright_mask = cv2.morphologyEx(bright_mask, cv2.MORPH_OPEN, bright_kernel, iterations=1)
+    bright_mask = cv2.morphologyEx(bright_mask, cv2.MORPH_CLOSE, bright_kernel, iterations=2)
+    contours, hierarchy = cv2.findContours(bright_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    annulus_candidates = []
+    if hierarchy is not None:
+        hierarchy_rows = hierarchy[0]
+        for idx, contour in enumerate(contours):
+            if hierarchy_rows[idx][3] != -1 or len(contour) < 40:
+                continue
+            child_idx = hierarchy_rows[idx][2]
+            if child_idx < 0:
+                continue
+            outer_points_roi = contour.reshape(-1, 2).astype(np.float32)
+            outer_center_roi, outer_radius_roi = cv2.minEnclosingCircle(outer_points_roi)
+            outer_center_roi = np.array(outer_center_roi, dtype=np.float32)
+            if outer_radius_roi < min_dim * 0.18 or outer_radius_roi > min_dim * 0.48:
+                continue
+            center_distance = float(np.linalg.norm(outer_center_roi - image_center))
+            if center_distance > min_dim * 0.18:
+                continue
+
+            child_candidates = []
+            while child_idx >= 0:
+                child_contour = contours[child_idx]
+                child_idx = hierarchy_rows[child_idx][0]
+                if len(child_contour) < 40:
+                    continue
+                child_points_roi = child_contour.reshape(-1, 2).astype(np.float32)
+                child_center_roi, child_radius_roi = cv2.minEnclosingCircle(child_points_roi)
+                child_center_roi = np.array(child_center_roi, dtype=np.float32)
+                child_center_offset = float(np.linalg.norm(child_center_roi - outer_center_roi))
+                ring_width = float(outer_radius_roi - child_radius_roi)
+                if child_radius_roi < min_dim * 0.12 or child_radius_roi >= outer_radius_roi:
+                    continue
+                if ring_width < max(5.0, outer_radius_roi * 0.035) or ring_width > outer_radius_roi * 0.35:
+                    continue
+                if child_center_offset > outer_radius_roi * 0.16:
+                    continue
+                child_candidates.append((child_radius_roi, child_contour, child_center_offset, ring_width))
+            if not child_candidates:
+                continue
+            child_radius_roi, inner_contour, child_center_offset, ring_width = max(child_candidates, key=lambda item: item[0])
+            score = float(cv2.contourArea(contour)) - 10.0 * center_distance - 6.0 * child_center_offset
+            annulus_candidates.append((score, contour, inner_contour, ring_width))
+
+    if annulus_candidates:
+        _, outer_contour, inner_contour, _ = max(annulus_candidates, key=lambda item: item[0])
+        raw_outer_points_roi = outer_contour.reshape(-1, 2).astype(np.float32)
+        raw_inner_points_roi = inner_contour.reshape(-1, 2).astype(np.float32)
+        rough_outer_center, rough_outer_radius = cv2.minEnclosingCircle(raw_outer_points_roi)
+        rough_inner_center, rough_inner_radius = cv2.minEnclosingCircle(raw_inner_points_roi)
+        rough_center = (np.array(rough_outer_center, dtype=np.float32) + np.array(rough_inner_center, dtype=np.float32)) / 2.0
+        scan_r_min = max(6.0, float(rough_inner_radius) * 0.72)
+        scan_r_max = min(
+            float(rough_outer_radius) * 1.10,
+            rough_center[0],
+            rough_center[1],
+            width - rough_center[0] - 1,
+            height - rough_center[1] - 1,
+        )
+        radial_inner_points_roi = []
+        radial_outer_points_roi = []
+        radial_thicknesses = []
+        if scan_r_max > scan_r_min:
+            angles = np.linspace(0, 2.0 * math.pi, 720, endpoint=False)
+            for angle in angles:
+                direction = np.array([math.cos(angle), math.sin(angle)], dtype=np.float32)
+                radii = np.linspace(scan_r_min, scan_r_max, 360)
+                xs = np.round(rough_center[0] + radii * direction[0]).astype(int)
+                ys = np.round(rough_center[1] + radii * direction[1]).astype(int)
+                valid = (xs >= 0) & (xs < width) & (ys >= 0) & (ys < height)
+                if np.count_nonzero(valid) < 40:
+                    continue
+                radii_v = radii[valid]
+                values = blur[ys[valid], xs[valid]].astype(np.float32)
+                bright = values >= bright_threshold
+                bright_indices = np.where(bright)[0]
+                if len(bright_indices) < 4:
+                    continue
+                groups = np.split(bright_indices, np.where(np.diff(bright_indices) > 2)[0] + 1)
+                valid_groups = []
+                for group in groups:
+                    if len(group) < 4:
+                        continue
+                    inner_r = float(radii_v[group[0]])
+                    outer_r = float(radii_v[group[-1]])
+                    thickness = outer_r - inner_r
+                    if thickness < max(4.0, rough_outer_radius * 0.025) or thickness > rough_outer_radius * 0.28:
+                        continue
+                    radial_center_r = (inner_r + outer_r) / 2.0
+                    expected_center_r = (float(rough_inner_radius) + float(rough_outer_radius)) / 2.0
+                    valid_groups.append((abs(radial_center_r - expected_center_r), inner_r, outer_r, thickness))
+                if not valid_groups:
+                    continue
+                _, inner_r, outer_r, thickness = min(valid_groups, key=lambda item: item[0])
+                radial_inner_points_roi.append(
+                    [
+                        float(rough_center[0] + inner_r * direction[0]),
+                        float(rough_center[1] + inner_r * direction[1]),
+                    ]
+                )
+                radial_outer_points_roi.append(
+                    [
+                        float(rough_center[0] + outer_r * direction[0]),
+                        float(rough_center[1] + outer_r * direction[1]),
+                    ]
+                )
+                radial_thicknesses.append(thickness)
+
+        if len(radial_inner_points_roi) >= 160 and len(radial_outer_points_roi) >= 160:
+            inner_points_roi = np.array(radial_inner_points_roi, dtype=np.float32)
+            outer_points_roi = np.array(radial_outer_points_roi, dtype=np.float32)
+        else:
+            inner_points_roi = circular_smooth_points(raw_inner_points_roi, 7)
+            outer_points_roi = circular_smooth_points(raw_outer_points_roi, 7)
+        offset = np.array([x1, y1], dtype=np.float32)
+        inner_points_full = inner_points_roi + offset
+        outer_points_full = outer_points_roi + offset
+        inner_center_x, inner_center_y, inner_radius = fit_circle_with_outlier_trim(inner_points_full)
+        outer_center_x, outer_center_y, outer_radius = fit_circle_with_outlier_trim(outer_points_full)
+        if outer_radius > inner_radius * 1.03:
+            inner_roundness = compute_roundness(inner_points_full, (inner_center_x, inner_center_y, inner_radius))
+            inner_measurement = PipeMeasurement(
+                filename=filename,
+                center_x_px=float(inner_center_x),
+                center_y_px=float(inner_center_y),
+                radius_px=float(inner_radius),
+                diameter_px=float(2.0 * inner_radius),
+                diameter_mm=float(2.0 * inner_radius),
+                roundness_px=float(inner_roundness["roundness_px"]),
+                roundness_mm=float(inner_roundness["roundness_px"]),
+                max_abs_deviation_px=float(inner_roundness["max_abs_deviation_px"]),
+                max_abs_deviation_mm=float(inner_roundness["max_abs_deviation_px"]),
+                contour_points=inner_points_full,
+                fitting_inliers=inner_points_full,
+                signed_errors_px=inner_roundness["signed_errors_px"],
+                mm_per_pixel=1.0,
+            )
+            center_offset = float(
+                np.linalg.norm(
+                    np.array([outer_center_x, outer_center_y], dtype=np.float32)
+                    - np.array([inner_center_x, inner_center_y], dtype=np.float32)
+                )
+            )
+            wall_thicknesses = np.linalg.norm(
+                outer_points_full.astype(np.float64) - np.array([outer_center_x, outer_center_y], dtype=np.float64),
+                axis=1,
+            ) - inner_radius
+            method = "bright front-rim annulus radial-band segmentation" if len(radial_inner_points_roi) >= 160 else "bright front-rim annulus segmentation"
+            return inner_measurement, PipeWallDetection(
+                inner_center_x_px=float(inner_center_x),
+                inner_center_y_px=float(inner_center_y),
+                inner_radius_px=float(inner_radius),
+                inner_points=inner_points_full,
+                outer_center_x_px=float(outer_center_x),
+                outer_center_y_px=float(outer_center_y),
+                outer_radius_px=float(outer_radius),
+                outer_points=outer_points_full,
+                wall_thickness_px=float(max(0.0, outer_radius - inner_radius)),
+                wall_thickness_min_px=float(np.min(wall_thicknesses)),
+                wall_thickness_max_px=float(np.max(wall_thicknesses)),
+                center_offset_px=center_offset,
+                method=method,
+            )
+
+    return None
+
+    _, dark_mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    component_count, labels, stats, centroids = cv2.connectedComponentsWithStats(dark_mask, connectivity=8)
+    candidates = []
+    for label in range(1, component_count):
+        area = float(stats[label, cv2.CC_STAT_AREA])
+        if area < min_dim * min_dim * 0.015:
+            continue
+        cx, cy = centroids[label]
+        center_distance = float(np.linalg.norm(np.array([cx, cy], dtype=np.float32) - image_center))
+        if center_distance > min_dim * 0.22:
+            continue
+        radius_equiv = math.sqrt(area / math.pi)
+        if radius_equiv < min_dim * 0.10 or radius_equiv > min_dim * 0.46:
+            continue
+        candidates.append((area - 7.0 * center_distance, label))
+    if not candidates:
+        return None
+
+    _, bore_label = max(candidates, key=lambda item: item[0])
+    bore_mask = np.where(labels == bore_label, 255, 0).astype(np.uint8)
+    contours, _ = cv2.findContours(bore_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not contours:
+        return None
+    bore_contour = max(contours, key=cv2.contourArea)
+    if len(bore_contour) < 40:
+        return None
+
+    bore_points_roi = circular_smooth_points(bore_contour.reshape(-1, 2).astype(np.float32), 7)
+    bore_points_full = bore_points_roi + np.array([x1, y1], dtype=np.float32)
+    bore_center_x, bore_center_y, bore_radius = fit_circle_with_outlier_trim(bore_points_full)
+    bore_circle = (bore_center_x, bore_center_y, bore_radius)
+    bore_roundness = compute_roundness(bore_points_full, bore_circle)
+    bore_measurement = PipeMeasurement(
+        filename=filename,
+        center_x_px=float(bore_center_x),
+        center_y_px=float(bore_center_y),
+        radius_px=float(bore_radius),
+        diameter_px=float(2.0 * bore_radius),
+        diameter_mm=float(2.0 * bore_radius),
+        roundness_px=float(bore_roundness["roundness_px"]),
+        roundness_mm=float(bore_roundness["roundness_px"]),
+        max_abs_deviation_px=float(bore_roundness["max_abs_deviation_px"]),
+        max_abs_deviation_mm=float(bore_roundness["max_abs_deviation_px"]),
+        contour_points=bore_points_full,
+        fitting_inliers=bore_points_full,
+        signed_errors_px=bore_roundness["signed_errors_px"],
+        mm_per_pixel=1.0,
+    )
+
+    center_roi = np.array([bore_center_x - x1, bore_center_y - y1], dtype=np.float32)
+    high_threshold = max(150.0, float(np.percentile(blur, 88)))
+    angles = np.linspace(0, 2.0 * math.pi, 720, endpoint=False)
+    lip_points_roi = []
+    lip_radii = []
+    max_radius = min(
+        center_roi[0],
+        center_roi[1],
+        width - center_roi[0] - 1,
+        height - center_roi[1] - 1,
+        bore_radius * 1.65,
+    )
+    if max_radius <= bore_radius * 1.08:
+        return bore_measurement, PipeWallDetection(
+            inner_center_x_px=float(bore_center_x),
+            inner_center_y_px=float(bore_center_y),
+            inner_radius_px=float(bore_radius),
+            inner_points=bore_points_full,
+            outer_center_x_px=float(bore_center_x),
+            outer_center_y_px=float(bore_center_y),
+            outer_radius_px=float(bore_radius),
+            outer_points=bore_points_full,
+            wall_thickness_px=0.0,
+            wall_thickness_min_px=0.0,
+            wall_thickness_max_px=0.0,
+            center_offset_px=0.0,
+            method="dark bore segmentation only",
+        )
+
+    for angle in angles:
+        direction = np.array([math.cos(angle), math.sin(angle)], dtype=np.float32)
+        radii = np.linspace(bore_radius * 0.92, max_radius, 260)
+        xs = np.round(center_roi[0] + radii * direction[0]).astype(int)
+        ys = np.round(center_roi[1] + radii * direction[1]).astype(int)
+        valid = (xs >= 0) & (xs < width) & (ys >= 0) & (ys < height)
+        if np.count_nonzero(valid) < 25:
+            continue
+        radii_v = radii[valid]
+        values = blur[ys[valid], xs[valid]].astype(np.float32)
+        bright = values >= high_threshold
+        bright_indices = np.where(bright & (radii_v >= bore_radius * 1.02))[0]
+        if len(bright_indices) < 3:
+            continue
+        groups = np.split(bright_indices, np.where(np.diff(bright_indices) > 2)[0] + 1)
+        groups = [group for group in groups if len(group) >= 3]
+        if not groups:
+            continue
+        first_group = groups[0]
+        edge_index = int(first_group[-1])
+        if edge_index + 1 < len(values):
+            local_end = min(len(values), edge_index + 8)
+            drops = np.diff(values[edge_index:local_end])
+            if len(drops) and np.min(drops) < -8:
+                edge_index = edge_index + int(np.argmin(drops)) + 1
+        lip_radius = float(radii_v[edge_index])
+        if lip_radius <= bore_radius * 1.04:
+            continue
+        lip_radii.append(lip_radius)
+        lip_points_roi.append(
+            [
+                float(center_roi[0] + lip_radius * direction[0]),
+                float(center_roi[1] + lip_radius * direction[1]),
+            ]
+        )
+
+    if len(lip_points_roi) < 80:
+        return bore_measurement, PipeWallDetection(
+            inner_center_x_px=float(bore_center_x),
+            inner_center_y_px=float(bore_center_y),
+            inner_radius_px=float(bore_radius),
+            inner_points=bore_points_full,
+            outer_center_x_px=float(bore_center_x),
+            outer_center_y_px=float(bore_center_y),
+            outer_radius_px=float(bore_radius),
+            outer_points=bore_points_full,
+            wall_thickness_px=0.0,
+            wall_thickness_min_px=0.0,
+            wall_thickness_max_px=0.0,
+            center_offset_px=0.0,
+            method="dark bore segmentation; lip edge not stable",
+        )
+
+    lip_points_full = np.array(lip_points_roi, dtype=np.float32) + np.array([x1, y1], dtype=np.float32)
+    lip_center_x, lip_center_y, lip_radius = fit_circle_with_outlier_trim(lip_points_full)
+    lip_center = np.array([lip_center_x, lip_center_y], dtype=np.float32)
+    center_offset = float(np.linalg.norm(lip_center - np.array([bore_center_x, bore_center_y], dtype=np.float32)))
+    lip_radii_array = np.array(lip_radii, dtype=np.float32)
+    wall_thicknesses = lip_radii_array - float(bore_radius)
+
+    return bore_measurement, PipeWallDetection(
+        inner_center_x_px=float(bore_center_x),
+        inner_center_y_px=float(bore_center_y),
+        inner_radius_px=float(bore_radius),
+        inner_points=bore_points_full,
+        outer_center_x_px=float(lip_center_x),
+        outer_center_y_px=float(lip_center_y),
+        outer_radius_px=float(lip_radius),
+        outer_points=lip_points_full,
+        wall_thickness_px=float(np.median(wall_thicknesses)),
+        wall_thickness_min_px=float(np.min(wall_thicknesses)),
+        wall_thickness_max_px=float(np.max(wall_thicknesses)),
+        center_offset_px=center_offset,
+        method="dark bore segmentation + radial bright-lip outer edge",
+    )
+
+
 def measure_pipe_roundness_pixels(
     filename: str,
     image_bytes: bytes,
@@ -969,6 +1715,7 @@ def measure_pipe_roundness_pixels(
     contour_config: ContourConfig,
     ransac_config: RansacConfig,
     use_auto_roi: bool = True,
+    roi_bbox_override: Optional[Tuple[int, int, int, int]] = None,
 ) -> Tuple[PipeMeasurement, Dict[str, np.ndarray], str]:
     image = decode_image(image_bytes)
     if image is None:
@@ -978,8 +1725,23 @@ def measure_pipe_roundness_pixels(
     roi_bbox = (0, 0, corrected.shape[1], corrected.shape[0])
     roi_note = "full image"
     roi_image = corrected
-    if use_auto_roi:
-        roi_bbox, roi_note = detect_pipe_roi(corrected)
+    use_targeted_rim_detector = False
+    if roi_bbox_override is not None:
+        x1, y1, x2, y2 = roi_bbox_override
+        x1 = max(0, min(int(x1), corrected.shape[1] - 1))
+        y1 = max(0, min(int(y1), corrected.shape[0] - 1))
+        x2 = max(x1 + 1, min(int(x2), corrected.shape[1]))
+        y2 = max(y1 + 1, min(int(y2), corrected.shape[0]))
+        roi_bbox = (x1, y1, x2, y2)
+        roi_image = corrected[y1:y2, x1:x2]
+        roi_note = f"fixed pipe search window: x={x1}:{x2}, y={y1}:{y2}"
+        use_targeted_rim_detector = True
+    elif use_auto_roi:
+        try:
+            roi_bbox, roi_note = detect_bright_rim_roi(corrected)
+            use_targeted_rim_detector = True
+        except ValueError:
+            roi_bbox, roi_note = detect_pipe_roi(corrected)
         x1, y1, x2, y2 = roi_bbox
         roi_image = corrected[y1:y2, x1:x2]
 
@@ -987,6 +1749,18 @@ def measure_pipe_roundness_pixels(
     processed["full_image_bgr"] = corrected
     processed["roi_bbox"] = roi_bbox
     processed["roi_note"] = roi_note
+
+    if use_targeted_rim_detector:
+        targeted_detection = detect_bore_and_lip_rims(processed, filename)
+        if targeted_detection is not None:
+            measurement, wall_detection = targeted_detection
+            processed["targeted_wall_detection"] = wall_detection
+            return measurement, processed, f"targeted rim detector; {roi_note}; {wall_detection.method}"
+        if roi_bbox_override is not None:
+            raise ValueError(
+                "Bright front rim was not detected clearly inside the fixed pipe window. "
+                "Adjust the fixed window so the white pipe rim is fully visible and not clipped."
+            )
 
     points_roi = select_pipe_contour(processed["clean_edges"], processed["image_bgr"].shape, contour_config)
     circle_roi, inlier_indices = fit_circle_ransac(points_roi, ransac_config)
@@ -1054,6 +1828,7 @@ def measure_pipe_roundness_pixels_robust(
     image_bytes: bytes,
     calibration: Optional[CameraCalibration],
     preprocess_config: PreprocessConfig,
+    roi_bbox_override: Optional[Tuple[int, int, int, int]] = None,
 ) -> Tuple[PipeMeasurement, Dict[str, np.ndarray], str]:
     attempts = [
         ("default contour settings", ContourConfig(), RansacConfig(max_iterations=1000, min_inlier_ratio=0.35)),
@@ -1074,6 +1849,7 @@ def measure_pipe_roundness_pixels_robust(
                 preprocess_config,
                 contour_config,
                 ransac_config,
+                roi_bbox_override=roi_bbox_override,
             )
             return measurement, processed, f"{note}; {roi_note}"
         except ValueError as exc:
@@ -1083,7 +1859,26 @@ def measure_pipe_roundness_pixels_robust(
         image = decode_image(image_bytes)
         if image is None:
             raise ValueError(f"Could not decode image: {filename}")
-        processed = preprocess_image(image, calibration, preprocess_config)
+        corrected = undistort_image(image, calibration)
+        roi_bbox = roi_bbox_override
+        if roi_bbox is not None:
+            x1, y1, x2, y2 = roi_bbox
+            x1 = max(0, min(int(x1), corrected.shape[1] - 1))
+            y1 = max(0, min(int(y1), corrected.shape[0] - 1))
+            x2 = max(x1 + 1, min(int(x2), corrected.shape[1]))
+            y2 = max(y1 + 1, min(int(y2), corrected.shape[0]))
+            roi_image = corrected[y1:y2, x1:x2]
+            processed = preprocess_image(roi_image, None, preprocess_config)
+            processed["full_image_bgr"] = corrected
+            processed["roi_bbox"] = (x1, y1, x2, y2)
+            processed["roi_note"] = f"fixed pipe search window: x={x1}:{x2}, y={y1}:{y2}"
+            offset = np.array([x1, y1], dtype=np.float32)
+        else:
+            processed = preprocess_image(corrected, None, preprocess_config)
+            processed["full_image_bgr"] = corrected
+            processed["roi_bbox"] = (0, 0, corrected.shape[1], corrected.shape[0])
+            processed["roi_note"] = "Hough-assisted full image"
+            offset = np.array([0, 0], dtype=np.float32)
         contour_config = ContourConfig(min_points=40, min_radius_fraction=0.015, max_radius_fraction=0.85)
         points = select_hough_annulus_points(processed, contour_config)
         circle, inlier_indices = fit_circle_ransac(
@@ -1092,10 +1887,12 @@ def measure_pipe_roundness_pixels_robust(
         )
         roundness = compute_roundness(points, circle)
         xc, yc, radius_px = circle
+        points_full = points + offset
+        inliers_full = points_full[inlier_indices]
         measurement = PipeMeasurement(
             filename=filename,
-            center_x_px=xc,
-            center_y_px=yc,
+            center_x_px=float(xc + offset[0]),
+            center_y_px=float(yc + offset[1]),
             radius_px=radius_px,
             diameter_px=2.0 * radius_px,
             diameter_mm=2.0 * radius_px,
@@ -1103,15 +1900,12 @@ def measure_pipe_roundness_pixels_robust(
             roundness_mm=float(roundness["roundness_px"]),
             max_abs_deviation_px=float(roundness["max_abs_deviation_px"]),
             max_abs_deviation_mm=float(roundness["max_abs_deviation_px"]),
-            contour_points=points,
-            fitting_inliers=points[inlier_indices],
+            contour_points=points_full,
+            fitting_inliers=inliers_full,
             signed_errors_px=roundness["signed_errors_px"],
             mm_per_pixel=1.0,
         )
-        processed["full_image_bgr"] = processed["image_bgr"]
-        processed["roi_bbox"] = (0, 0, processed["image_bgr"].shape[1], processed["image_bgr"].shape[0])
-        processed["roi_note"] = "Hough-assisted full image"
-        return measurement, processed, "Hough-assisted edge annulus fallback"
+        return measurement, processed, f"Hough-assisted edge annulus fallback; {processed['roi_note']}"
     except ValueError as exc:
         errors.append(f"Hough fallback: {exc}")
         raise ValueError("Pipe outer-circle detection failed. " + " | ".join(errors)) from exc
@@ -5082,7 +5876,9 @@ def render_visual_analysis(
     )
 
     wall_reference = wall_reference_measurement or measurement
-    wall_detection = detect_pipe_wall_rims(processed, wall_reference)
+    wall_detection = processed.get("targeted_wall_detection")
+    if wall_detection is None:
+        wall_detection = detect_pipe_wall_rims(processed, wall_reference)
     full_overlay = draw_outer_circle_overlay(
         processed["full_image_bgr"],
         measurement,
@@ -5144,6 +5940,7 @@ def main() -> None:
 
     calibration = load_static_calibration()
     saved_scale = load_saved_scale_config()
+    checkerboard_scale_candidate = load_checkerboard_scale_candidate()
     try:
         standards_contract, _execution_contract = load_standards_contract()
     except Exception as exc:
@@ -5218,6 +6015,7 @@ def main() -> None:
                 "Outer pipe diameter uses the wall guide and falls back if that edge is not clear."
             ),
         )
+        st.caption("Pipe ROI is detected automatically with the trained segmentation model.")
         st.caption("Pixel inspection runs automatically after upload.")
         render_sidebar_footer()
 
@@ -5238,20 +6036,48 @@ def main() -> None:
 
     try:
         test_bytes = test_file.getvalue()
-        with st.spinner("Detecting outer rim and fitting circle..."):
+        preview_image = decode_image(test_bytes)
+        if preview_image is None:
+            raise ValueError(f"Could not decode image: {test_file.name}")
+        model_roi_note = None
+        model_warning = None
+        try:
+            model_path = pipe_segmentation_model_path()
+            if model_path is None:
+                raise FileNotFoundError(
+                    "Pipe segmentation model not found. Expected pipe_edge_yolo11n_seg_best.pt in models/."
+                )
+            pipe_model = load_pipe_segmentation_model(str(model_path))
+            with st.spinner("Detecting pipe ROI with segmentation model..."):
+                roi_bbox_override, model_roi_note = detect_model_pipe_roi(preview_image, pipe_model, padding_fraction=0.15)
+        except Exception as model_exc:
+            with st.spinner("AI ROI detection failed; trying OpenCV fallback..."):
+                roi_bbox_override, fallback_note = detect_bright_rim_roi(preview_image, padding_multiplier=1.40)
+            model_warning = (
+                "AI ROI detection failed. Using OpenCV fallback ROI; this result may be less reliable. "
+                f"Reason: {model_exc}"
+            )
+            model_roi_note = f"AI model fallback to OpenCV bright-rim ROI; {fallback_note}"
+        with st.spinner("Measuring segmented pipe rim with OpenCV..."):
             raw_test, test_processed, test_note = measure_pipe_roundness_pixels_robust(
                 test_file.name,
                 test_bytes,
                 calibration,
                 preprocess_config,
+                roi_bbox_override=roi_bbox_override,
             )
+            test_note = f"{model_roi_note}; {test_note}"
+            if model_warning is not None:
+                test_processed["model_warning"] = model_warning
     except Exception as exc:
         st.error(f"Inspection failed: {exc}")
         return
 
     inner_reference_measurement = raw_test
     target_warning = None
-    wall_target_detection = detect_pipe_wall_rims(test_processed, inner_reference_measurement)
+    wall_target_detection = test_processed.get("targeted_wall_detection")
+    if wall_target_detection is None:
+        wall_target_detection = detect_pipe_wall_rims(test_processed, inner_reference_measurement)
     resolved_feature_type = "inner"
     if measurement_target == "Inner/opening rim":
         if wall_target_detection is not None:
@@ -5265,12 +6091,23 @@ def main() -> None:
             raw_test = build_outer_wall_measurement(inner_reference_measurement, wall_target_detection)
             test_note = f"{test_note}; target outer pipe diameter from wall guide"
             resolved_feature_type = "outer"
+            if (
+                "YOLO segmentation mask" in wall_target_detection.method
+                or "bright-lip outer edge" in wall_target_detection.method
+                or "bright front-rim annulus" in wall_target_detection.method
+            ):
+                target_warning = (
+                    "Outer mode is using the detected bright/front rim boundary. "
+                    "Use it as pipe outer diameter only if that visible rim is the actual OD feature."
+                )
         else:
             target_warning = "Outer pipe diameter was requested, but the outer wall edge was not found clearly. Using inner/opening rim result."
             test_note = f"{test_note}; requested outer pipe diameter but outer wall was not found; using inner/opening rim"
             resolved_feature_type = "inner"
 
     st.subheader("Pixel Inspection")
+    if test_processed.get("model_warning"):
+        st.warning(test_processed["model_warning"])
     if target_warning is not None:
         st.warning(target_warning)
     st.caption(f"Active rim for ISO values and OSTB inputs: {'outer pipe diameter' if resolved_feature_type == 'outer' else 'inner/opening rim'}")
@@ -5282,6 +6119,8 @@ def main() -> None:
     scale_options = ["Pixel only"]
     if saved_scale is not None:
         scale_options.append("Use saved calibrated scale")
+    if checkerboard_scale_candidate is not None:
+        scale_options.append("Use checkerboard candidate scale")
     scale_options.append("Calibrate from this image")
     scale_mode = st.radio(
         "Scale mode",
@@ -5302,6 +6141,22 @@ def main() -> None:
         st.caption(
             "Saved scale is valid only when camera distance, zoom, resolution, angle, and pipe plane are unchanged."
         )
+    elif scale_mode == "Use checkerboard candidate scale" and checkerboard_scale_candidate is not None:
+        mm_per_pixel = float(checkerboard_scale_candidate["mm_per_pixel"])
+        scale_source = "checkerboard_candidate_scale"
+        calibration_details = checkerboard_scale_candidate
+        scale_std = checkerboard_scale_candidate.get("scale_std_mm_per_pixel")
+        if scale_std is not None:
+            try:
+                scale_variation_pct = float(scale_std) / mm_per_pixel * 100.0
+            except (TypeError, ValueError, ZeroDivisionError):
+                scale_variation_pct = float("nan")
+            st.warning(
+                f"Using checkerboard candidate scale for review only: {mm_per_pixel:.8f} mm/px. "
+                f"Stored scale variation is {scale_variation_pct:.1f}%, so do not use this for final acceptance."
+            )
+        else:
+            st.warning("Using checkerboard candidate scale for review only. Do not use this for final acceptance.")
     elif scale_mode == "Calibrate from this image":
         outer_reference_diameter_px = (
             wall_target_detection.outer_radius_px * 2.0
