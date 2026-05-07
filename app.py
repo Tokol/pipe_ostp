@@ -53,6 +53,25 @@ APP_DIR = Path(__file__).resolve().parent
 CALIBRATION_PATH = APP_DIR / "camera_calibration.json"
 SAVED_SCALE_PATH = APP_DIR / "saved_scale_config.json"
 CHECKERBOARD_SCALE_CANDIDATE_PATH = APP_DIR / "saved_scale_config_candidate.json"
+CHECKERBOARD_SCALE_CANDIDATE_ALIASES = [
+    CHECKERBOARD_SCALE_CANDIDATE_PATH,
+    APP_DIR / "save_Scale_config_Candiate.json",
+    APP_DIR / "saved_Scale_config_Candiate.json",
+    APP_DIR / "saved_scale_config_Candiate.json",
+]
+TOBIAS_CALIBRATION_FALLBACK = {
+    "mm_per_pixel": 0.0754428205409135,
+    "source": "tobias_checkerboard_calibration",
+    "reference_diameter_mm": 0.0,
+    "reference_diameter_px": 0.0,
+    "reference_filename": "Image_20260506163023404.bmp",
+    "measurement_target": "checkerboard plane at image center",
+    "created_at": "2026-05-07T11:21:45+03:00",
+    "valid_for": "same camera, same distance, same zoom, same resolution, same pipe plane",
+    "square_size_mm": 5.0,
+    "scale_std_mm_per_pixel": 0.00035177495723609097,
+    "accepted_images": 6,
+}
 TOLERANCE_PATH = APP_DIR / "TOLERANSTABELL.xlsx"
 CONTRACT_DIR = APP_DIR / "ostb_data_map_contract"
 STANDARDS_CONTRACT_PATH = CONTRACT_DIR / "standards.json"
@@ -220,12 +239,17 @@ def load_saved_scale_config() -> Optional[Dict[str, object]]:
 
 @st.cache_data
 def load_checkerboard_scale_candidate() -> Optional[Dict[str, object]]:
-    if not CHECKERBOARD_SCALE_CANDIDATE_PATH.exists():
-        return None
-    try:
-        payload = json.loads(CHECKERBOARD_SCALE_CANDIDATE_PATH.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
+    payload = None
+    for path in CHECKERBOARD_SCALE_CANDIDATE_ALIASES:
+        if not path.exists():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        break
+    if payload is None:
+        payload = dict(TOBIAS_CALIBRATION_FALLBACK)
     if not isinstance(payload, dict):
         return None
     try:
