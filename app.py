@@ -83,6 +83,7 @@ NOVIA_LOGO_PATH = APP_DIR / "images" / "novia_uas.png"
 OSTP_LOGO_PATH = APP_DIR / "images" / "ostp_logo.png"
 SUCCESS_GIF_PATH = APP_DIR / "images" / "mario_super_mario.gif"
 FAIL_GIF_PATH = APP_DIR / "images" / "pie_fail_match_success.gif"
+PIPE_ASSET_PATH = APP_DIR / "images" / "pipe_asset.png"
 PIPE_SEGMENTATION_MODEL_CANDIDATES = [
     APP_DIR / "models" / "pipe_edge_yolo11n_seg_best.pt",
 ]
@@ -3976,6 +3977,27 @@ def inject_app_css() -> None:
             color: #52616f;
             font-size: 0.82rem;
         }
+        .empty-upload-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 260px;
+            margin-top: 1.5rem;
+            color: #52616f;
+            text-align: center;
+        }
+        .empty-upload-state img {
+            width: 160px;
+            height: 160px;
+            object-fit: contain;
+            margin-bottom: 0.9rem;
+            opacity: 0.9;
+        }
+        .empty-upload-state strong {
+            color: #2f3340;
+            font-size: 1.05rem;
+        }
         .circle-summary {
             border: 1px solid #dde5ef;
             border-radius: 8px;
@@ -4154,6 +4176,29 @@ def render_pixel_metric_row(measurement: PipeMeasurement) -> None:
 def load_gif_data_uri(gif_path: str) -> str:
     path = Path(gif_path)
     return f"data:image/gif;base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
+
+
+@st.cache_data
+def load_png_data_uri(image_path: str, modified_time: float) -> str:
+    path = Path(image_path)
+    return f"data:image/png;base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
+
+
+def render_empty_upload_state() -> None:
+    if PIPE_ASSET_PATH.exists():
+        pipe_uri = load_png_data_uri(str(PIPE_ASSET_PATH), PIPE_ASSET_PATH.stat().st_mtime)
+        image_html = f'<img src="{pipe_uri}" alt="">'
+    else:
+        image_html = ""
+    st.markdown(
+        f"""
+        <div class="empty-upload-state">
+            {image_html}
+            <strong>Upload a pipe image to start inspection</strong>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def selected_standard_check_passed(tolerance_report: Dict[str, object]) -> Optional[bool]:
@@ -6408,8 +6453,6 @@ def main() -> None:
                 "Outer pipe diameter uses the wall guide and falls back if that edge is not clear."
             ),
         )
-        st.caption("Pipe ROI is detected automatically with the trained segmentation model.")
-        st.caption("Pixel inspection runs automatically after an image is provided.")
         render_sidebar_footer()
 
     st.info(
@@ -6419,7 +6462,7 @@ def main() -> None:
 
     input_file = uploaded_file
     if input_file is None:
-        st.write("Upload a test image to start inspection.")
+        render_empty_upload_state()
         return
 
     preprocess_config = PreprocessConfig(
