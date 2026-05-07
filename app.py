@@ -6338,48 +6338,9 @@ def main() -> None:
         st.header("Upload Test Image")
         test_file = st.file_uploader("Test pipe image", type=["bmp", "png", "jpg", "jpeg"], key="test")
 
-        st.header("Processing Settings")
         blur_kernel = 5
         canny_sigma = 0.33
         morphology_kernel = 3
-        st.caption("Production defaults are locked for repeatable inspection.")
-        show_advanced_settings = st.toggle(
-            "Show advanced calibration controls",
-            value=False,
-            help="Only enable this when recalibrating the image pipeline or debugging unusual images.",
-        )
-        if show_advanced_settings:
-            st.warning("Changing these values changes the measurement pipeline. Keep them fixed during production inspection.")
-            with st.expander("Image processing parameters", expanded=True):
-                blur_kernel = st.slider(
-                    "Gaussian blur kernel",
-                    3,
-                    15,
-                    blur_kernel,
-                    step=2,
-                    help="Smooths image noise before edge detection. Increase if the edge map has many tiny noisy edges. Decrease if the pipe rim becomes too soft or loses detail.",
-                )
-                st.caption("Higher = smoother image and less noise. Lower = sharper rim but more noise.")
-                canny_sigma = st.slider(
-                    "Adaptive Canny sigma",
-                    0.10,
-                    0.80,
-                    canny_sigma,
-                    step=0.01,
-                    help="Controls edge detector sensitivity. Increase if the rim edge is broken or missing. Decrease if too many background or reflection edges appear.",
-                )
-                st.caption("Higher = more sensitive edge detection. Lower = stricter edge detection.")
-                morphology_kernel = st.slider(
-                    "Morphology kernel",
-                    1,
-                    9,
-                    morphology_kernel,
-                    step=2,
-                    help="Connects small gaps in detected edges. Increase if the rim contour is fragmented. Decrease if separate edges merge together or the rim looks distorted.",
-                )
-                st.caption("Higher = connects larger gaps. Lower = preserves original edge shape.")
-        else:
-            st.caption("Using fixed defaults: blur 5, Canny sigma 0.33, morphology 3.")
         measurement_target = st.radio(
             "Measurement target",
             ["Inner/opening rim", "Outer pipe diameter"],
