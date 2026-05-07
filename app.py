@@ -6618,17 +6618,33 @@ def main() -> None:
             )
             st.success(f"Saved calibrated scale to {SAVED_SCALE_PATH.name}.")
             st.rerun()
+    tolerance_report = None
+    standard_label = None
+    unit = "mm" if mm_per_pixel is not None else "px"
+
     if mm_per_pixel is not None:
         test_measurement = convert_measurement_scale(raw_test, mm_per_pixel)
         st.success(f"Scale active: {mm_per_pixel:.6f} mm/px; diameter correction +{DIAMETER_OFFSET_CORRECTION_MM:.3f} mm")
+        render_visual_analysis(
+            test_processed,
+            test_measurement,
+            tolerance_report,
+            unit,
+            wall_reference_measurement=inner_reference_measurement,
+            diameter_offset_mm=DIAMETER_OFFSET_CORRECTION_MM,
+        )
         render_metric_row(test_measurement)
     else:
         test_measurement = raw_test
         st.info("No scale active. Showing pixel-only measurement; tolerance check requires millimeters.")
-
-    tolerance_report = None
-    standard_label = None
-    unit = "mm" if mm_per_pixel is not None else "px"
+        render_visual_analysis(
+            test_processed,
+            test_measurement,
+            tolerance_report,
+            unit,
+            wall_reference_measurement=inner_reference_measurement,
+            diameter_offset_mm=0.0,
+        )
     measured_wall_thickness_mm = (
         wall_target_detection.wall_thickness_px * mm_per_pixel
         if mm_per_pixel is not None and wall_target_detection is not None
@@ -6680,15 +6696,6 @@ def main() -> None:
                         tolerance_report = combined_report
                 except Exception as exc:
                     st.error(f"OSTB standards check failed: {exc}")
-
-    render_visual_analysis(
-        test_processed,
-        test_measurement,
-        tolerance_report,
-        unit,
-        wall_reference_measurement=inner_reference_measurement,
-        diameter_offset_mm=DIAMETER_OFFSET_CORRECTION_MM if mm_per_pixel is not None else 0.0,
-    )
 
     result_df = build_result_row(test_measurement, tolerance_report, standard_label, scale_source, measurement_target)
     st.subheader("Export")
