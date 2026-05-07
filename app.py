@@ -81,7 +81,7 @@ OVALITY_LOOKUP_PATH = CONTRACT_DIR / "ovality_lookup.json"
 DIAMETER_LOOKUP_PATH = CONTRACT_DIR / "diameter_lookup.json"
 NOVIA_LOGO_PATH = APP_DIR / "images" / "novia_uas.png"
 OSTP_LOGO_PATH = APP_DIR / "images" / "ostp_logo.png"
-SUCCESS_GIF_PATH = APP_DIR / "images" / "sucess_mario.gif"
+SUCCESS_GIF_PATH = APP_DIR / "images" / "mario_super_mario.gif"
 FAIL_GIF_PATH = APP_DIR / "images" / "pie_fail_match_success.gif"
 PIPE_SEGMENTATION_MODEL_CANDIDATES = [
     APP_DIR / "models" / "pipe_edge_yolo11n_seg_best.pt",
@@ -6393,8 +6393,8 @@ def main() -> None:
 
     with st.sidebar:
         render_sidebar_brand()
-        st.header("Upload Test Image")
-        test_file = st.file_uploader("Test pipe image", type=["bmp", "png", "jpg", "jpeg"], key="test")
+        st.header("Input Image")
+        uploaded_file = st.file_uploader("Test pipe image", type=["bmp", "png", "jpg", "jpeg"], key="test")
 
         blur_kernel = 5
         canny_sigma = 0.33
@@ -6409,7 +6409,7 @@ def main() -> None:
             ),
         )
         st.caption("Pipe ROI is detected automatically with the trained segmentation model.")
-        st.caption("Pixel inspection runs automatically after upload.")
+        st.caption("Pixel inspection runs automatically after an image is provided.")
         render_sidebar_footer()
 
     st.info(
@@ -6417,7 +6417,8 @@ def main() -> None:
         "Millimeter values and OSTB standards checks are enabled after you add a scale."
     )
 
-    if test_file is None:
+    input_file = uploaded_file
+    if input_file is None:
         st.write("Upload a test image to start inspection.")
         return
 
@@ -6428,10 +6429,10 @@ def main() -> None:
     )
 
     try:
-        test_bytes = test_file.getvalue()
+        test_bytes = input_file.getvalue()
         preview_image = decode_image(test_bytes)
         if preview_image is None:
-            raise ValueError(f"Could not decode image: {test_file.name}")
+            raise ValueError(f"Could not decode image: {input_file.name}")
         model_roi_note = None
         model_warning = None
         model_detection_overlay = None
@@ -6454,7 +6455,7 @@ def main() -> None:
             model_roi_note = f"AI model fallback to OpenCV bright-rim ROI; {fallback_note}"
         with st.spinner("Measuring segmented pipe rim with OpenCV..."):
             raw_test, test_processed, test_note = measure_pipe_roundness_pixels_robust(
-                test_file.name,
+                input_file.name,
                 test_bytes,
                 calibration,
                 preprocess_config,
@@ -6613,7 +6614,7 @@ def main() -> None:
                 "current_image_known_outer_diameter",
                 known_test_diameter_mm,
                 outer_reference_diameter_px,
-                test_file.name,
+                input_file.name,
                 "Outer pipe diameter calibration reference",
             )
             st.success(f"Saved calibrated scale to {SAVED_SCALE_PATH.name}.")
