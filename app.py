@@ -606,7 +606,7 @@ def detect_model_pipe_roi(
     model,
     padding_fraction: float = 0.15,
     confidence: float = 0.25,
-) -> Tuple[Tuple[int, int, int, int], str]:
+) -> Tuple[Tuple[int, int, int, int], str, np.ndarray]:
     height, width = image_bgr.shape[:2]
     image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
     results = model.predict(image_rgb, imgsz=1024, conf=confidence, verbose=False)
@@ -620,11 +620,16 @@ def detect_model_pipe_roi(
     if result.boxes is not None and result.boxes.conf is not None:
         confidences = result.boxes.conf.detach().cpu().numpy().astype(float).tolist()
 
+    polygons = []
+    polygon_confidences = []
     candidates = []
     for idx, polygon in enumerate(result.masks.xy):
         points = np.asarray(polygon, dtype=np.float32)
         if points.ndim != 2 or points.shape[0] < 3:
             continue
+        conf = confidences[idx] if idx < len(confidences) else 1.0
+        polygons.append(points)
+        polygon_confidences.append(conf)
         x_min = float(np.min(points[:, 0]))
         y_min = float(np.min(points[:, 1]))
         x_max = float(np.max(points[:, 0]))
@@ -634,13 +639,12 @@ def detect_model_pipe_roi(
         if box_width <= 5 or box_height <= 5:
             continue
         area = abs(float(cv2.contourArea(points.reshape(-1, 1, 2))))
-        conf = confidences[idx] if idx < len(confidences) else 1.0
-        candidates.append((area * max(conf, 0.01), conf, x_min, y_min, x_max, y_max))
+        candidates.append((area * max(conf, 0.01), conf, x_min, y_min, x_max, y_max, len(polygons) - 1))
 
     if not candidates:
         raise ValueError("Segmentation model detected masks, but none were usable.")
 
-    _, conf, x_min, y_min, x_max, y_max = max(candidates, key=lambda item: item[0])
+    _, conf, x_min, y_min, x_max, y_max, selected_polygon_index = max(candidates, key=lambda item: item[0])
     box_width = x_max - x_min
     box_height = y_max - y_min
     pad = max(20.0, max(box_width, box_height) * padding_fraction)
@@ -651,12 +655,19 @@ def detect_model_pipe_roi(
     if x2 <= x1 or y2 <= y1:
         raise ValueError("Segmentation model produced an empty ROI.")
 
+    model_detection_overlay = draw_model_detection_overlay(
+        image_bgr,
+        polygons,
+        polygon_confidences,
+        selected_polygon_index,
+        roi_bbox=(x1, y1, x2, y2),
+    )
     return (
         x1,
         y1,
         x2,
         y2,
-    ), f"model pipe rim ROI: conf={conf:.2f}, bbox=({x1},{y1})-({x2},{y2}), padding={padding_fraction:.0%}"
+    ), f"model pipe rim ROI: conf={conf:.2f}, bbox=({x1},{y1})-({x2},{y2}), padding={padding_fraction:.0%}", model_detection_overlay
 
 
 def measure_pipe_with_segmentation_model(
@@ -1160,6 +1171,85 @@ def fit_circle_with_outlier_trim(points: np.ndarray) -> Tuple[float, float, floa
     return refine_circle_least_squares(trimmed, algebraic_circle_fit(trimmed))
 
 
+def robust_mad(values: np.ndarray) -> float:
+    if len(values) == 0:
+        return 0.0
+    median = float(np.median(values))
+    return float(np.median(np.abs(values - median)))
+
+
+def fit_circle_with_adaptive_outlier_trim(
+    points: np.ndarray,
+    radius_hint: Optional[float] = None,
+) -> Tuple[Tuple[float, float, float], np.ndarray]:
+    if len(points) < 5:
+        circle = algebraic_circle_fit(points)
+        return circle, points.astype(np.float32)
+
+    initial = refine_circle_least_squares(points, algebraic_circle_fit(points))
+    center = np.array([initial[0], initial[1]], dtype=np.float64)
+    radius = float(radius_hint if radius_hint is not None and radius_hint > 0 else initial[2])
+    distances = np.linalg.norm(points.astype(np.float64) - center, axis=1)
+    residuals = np.abs(distances - float(initial[2]))
+    median_residual = float(np.median(residuals))
+    mad_residual = robust_mad(residuals)
+    threshold = max(2.0, radius * 0.008, median_residual + 3.5 * max(mad_residual, 1e-6))
+    inliers = points[residuals <= threshold]
+    min_keep = max(32, int(len(points) * 0.45))
+    if len(inliers) < min_keep:
+        percentile_threshold = float(np.percentile(residuals, 72))
+        inliers = points[residuals <= max(threshold, percentile_threshold)]
+    if len(inliers) < 5:
+        return initial, points.astype(np.float32)
+
+    refined = refine_circle_least_squares(inliers, algebraic_circle_fit(inliers))
+    return refined, inliers.astype(np.float32)
+
+
+def filter_radial_band_samples(
+    center_roi: np.ndarray,
+    inner_points_roi: np.ndarray,
+    outer_points_roi: np.ndarray,
+    rough_inner_radius: float,
+    rough_outer_radius: float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    if len(inner_points_roi) < 40 or len(outer_points_roi) < 40:
+        return inner_points_roi, outer_points_roi
+
+    inner_vectors = inner_points_roi.astype(np.float64) - center_roi.astype(np.float64)
+    outer_vectors = outer_points_roi.astype(np.float64) - center_roi.astype(np.float64)
+    inner_radii = np.linalg.norm(inner_vectors, axis=1)
+    outer_radii = np.linalg.norm(outer_vectors, axis=1)
+    thicknesses = outer_radii - inner_radii
+
+    valid = thicknesses > max(3.0, float(rough_outer_radius) * 0.012)
+    if np.count_nonzero(valid) < 40:
+        return inner_points_roi, outer_points_roi
+
+    inner_radii_v = inner_radii[valid]
+    outer_radii_v = outer_radii[valid]
+    thicknesses_v = thicknesses[valid]
+    inner_points_v = inner_points_roi[valid]
+    outer_points_v = outer_points_roi[valid]
+
+    inner_median = float(np.median(inner_radii_v))
+    outer_median = float(np.median(outer_radii_v))
+    thickness_median = float(np.median(thicknesses_v))
+    inner_tol = max(3.0, float(rough_inner_radius) * 0.020, 4.0 * max(robust_mad(inner_radii_v), 1e-6))
+    outer_tol = max(3.0, float(rough_outer_radius) * 0.020, 4.0 * max(robust_mad(outer_radii_v), 1e-6))
+    thickness_tol = max(3.0, thickness_median * 0.45, 4.0 * max(robust_mad(thicknesses_v), 1e-6))
+
+    keep = (
+        (np.abs(inner_radii_v - inner_median) <= inner_tol)
+        & (np.abs(outer_radii_v - outer_median) <= outer_tol)
+        & (np.abs(thicknesses_v - thickness_median) <= thickness_tol)
+    )
+    if np.count_nonzero(keep) < max(40, int(len(inner_points_roi) * 0.45)):
+        return inner_points_roi, outer_points_roi
+
+    return inner_points_v[keep].astype(np.float32), outer_points_v[keep].astype(np.float32)
+
+
 def build_outer_wall_measurement(base_measurement: PipeMeasurement, wall_detection: PipeWallDetection) -> PipeMeasurement:
     outer_points = wall_detection.outer_points.astype(np.float32)
     outer_circle = (
@@ -1310,7 +1400,8 @@ def detect_pipe_wall_rims(processed: Dict[str, np.ndarray], measurement: PipeMea
 
         inner_points_roi_array = np.array(inner_points_roi, dtype=np.float32)
         inner_points_full = inner_points_roi_array + np.array([x1, y1], dtype=np.float32)
-        inner_center_x, inner_center_y, inner_radius_detected = fit_circle_with_outlier_trim(inner_points_full)
+        inner_circle, inner_inliers_full = fit_circle_with_adaptive_outlier_trim(inner_points_full, measured_outer_radius * 0.75)
+        inner_center_x, inner_center_y, inner_radius_detected = inner_circle
         inner_radii_array = np.array(inner_radii, dtype=np.float32)
         wall_thicknesses = measured_outer_radius - inner_radii_array
         thickness_median = float(np.median(wall_thicknesses))
@@ -1322,7 +1413,7 @@ def detect_pipe_wall_rims(processed: Dict[str, np.ndarray], measurement: PipeMea
             inner_center_x_px=float(inner_center_x),
             inner_center_y_px=float(inner_center_y),
             inner_radius_px=inner_radius_detected,
-            inner_points=inner_points_full,
+            inner_points=inner_inliers_full,
             outer_center_x_px=measurement.center_x_px,
             outer_center_y_px=measurement.center_y_px,
             outer_radius_px=measured_outer_radius,
@@ -1339,7 +1430,8 @@ def detect_pipe_wall_rims(processed: Dict[str, np.ndarray], measurement: PipeMea
     thickness_span = float(np.max(wall_thicknesses) - np.min(wall_thicknesses))
     outer_points_roi_array = np.array(outer_points_roi, dtype=np.float32)
     outer_points_full = outer_points_roi_array + np.array([x1, y1], dtype=np.float32)
-    outer_center_x, outer_center_y, outer_radius = fit_circle_with_outlier_trim(outer_points_full)
+    outer_circle, outer_inliers_full = fit_circle_with_adaptive_outlier_trim(outer_points_full, inner_radius + thickness_median)
+    outer_center_x, outer_center_y, outer_radius = outer_circle
     radius_ratio = outer_radius / inner_radius if inner_radius > 0 else float("inf")
     if outer_radius > min(width, height) * 0.44 or radius_ratio > 1.75 or thickness_span > max(80.0, thickness_median * 0.75):
         return None
@@ -1357,7 +1449,7 @@ def detect_pipe_wall_rims(processed: Dict[str, np.ndarray], measurement: PipeMea
         outer_center_x_px=float(outer_center_full[0]),
         outer_center_y_px=float(outer_center_full[1]),
         outer_radius_px=outer_radius,
-        outer_points=outer_points_full,
+        outer_points=outer_inliers_full,
         wall_thickness_px=thickness_median,
         wall_thickness_min_px=float(np.min(wall_thicknesses)),
         wall_thickness_max_px=float(np.max(wall_thicknesses)),
@@ -1493,16 +1585,25 @@ def detect_bore_and_lip_rims(
         if len(radial_inner_points_roi) >= 160 and len(radial_outer_points_roi) >= 160:
             inner_points_roi = np.array(radial_inner_points_roi, dtype=np.float32)
             outer_points_roi = np.array(radial_outer_points_roi, dtype=np.float32)
+            inner_points_roi, outer_points_roi = filter_radial_band_samples(
+                rough_center,
+                inner_points_roi,
+                outer_points_roi,
+                float(rough_inner_radius),
+                float(rough_outer_radius),
+            )
         else:
             inner_points_roi = circular_smooth_points(raw_inner_points_roi, 7)
             outer_points_roi = circular_smooth_points(raw_outer_points_roi, 7)
         offset = np.array([x1, y1], dtype=np.float32)
         inner_points_full = inner_points_roi + offset
         outer_points_full = outer_points_roi + offset
-        inner_center_x, inner_center_y, inner_radius = fit_circle_with_outlier_trim(inner_points_full)
-        outer_center_x, outer_center_y, outer_radius = fit_circle_with_outlier_trim(outer_points_full)
+        inner_circle, inner_inliers_full = fit_circle_with_adaptive_outlier_trim(inner_points_full, float(rough_inner_radius))
+        outer_circle, outer_inliers_full = fit_circle_with_adaptive_outlier_trim(outer_points_full, float(rough_outer_radius))
+        inner_center_x, inner_center_y, inner_radius = inner_circle
+        outer_center_x, outer_center_y, outer_radius = outer_circle
         if outer_radius > inner_radius * 1.03:
-            inner_roundness = compute_roundness(inner_points_full, (inner_center_x, inner_center_y, inner_radius))
+            inner_roundness = compute_roundness(inner_inliers_full, (inner_center_x, inner_center_y, inner_radius))
             inner_measurement = PipeMeasurement(
                 filename=filename,
                 center_x_px=float(inner_center_x),
@@ -1514,8 +1615,8 @@ def detect_bore_and_lip_rims(
                 roundness_mm=float(inner_roundness["roundness_px"]),
                 max_abs_deviation_px=float(inner_roundness["max_abs_deviation_px"]),
                 max_abs_deviation_mm=float(inner_roundness["max_abs_deviation_px"]),
-                contour_points=inner_points_full,
-                fitting_inliers=inner_points_full,
+                contour_points=inner_inliers_full,
+                fitting_inliers=inner_inliers_full,
                 signed_errors_px=inner_roundness["signed_errors_px"],
                 mm_per_pixel=1.0,
             )
@@ -1526,19 +1627,19 @@ def detect_bore_and_lip_rims(
                 )
             )
             wall_thicknesses = np.linalg.norm(
-                outer_points_full.astype(np.float64) - np.array([outer_center_x, outer_center_y], dtype=np.float64),
+                outer_inliers_full.astype(np.float64) - np.array([outer_center_x, outer_center_y], dtype=np.float64),
                 axis=1,
             ) - inner_radius
-            method = "bright front-rim annulus radial-band segmentation" if len(radial_inner_points_roi) >= 160 else "bright front-rim annulus segmentation"
+            method = "adaptive radial-band rim scan" if len(radial_inner_points_roi) >= 160 else "bright front-rim annulus segmentation"
             return inner_measurement, PipeWallDetection(
                 inner_center_x_px=float(inner_center_x),
                 inner_center_y_px=float(inner_center_y),
                 inner_radius_px=float(inner_radius),
-                inner_points=inner_points_full,
+                inner_points=inner_inliers_full,
                 outer_center_x_px=float(outer_center_x),
                 outer_center_y_px=float(outer_center_y),
                 outer_radius_px=float(outer_radius),
-                outer_points=outer_points_full,
+                outer_points=outer_inliers_full,
                 wall_thickness_px=float(max(0.0, outer_radius - inner_radius)),
                 wall_thickness_min_px=float(np.min(wall_thicknesses)),
                 wall_thickness_max_px=float(np.max(wall_thicknesses)),
@@ -3121,6 +3222,58 @@ def bgr_to_rgb(image_bgr: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
 
+def draw_model_detection_overlay(
+    image_bgr: np.ndarray,
+    polygons: List[np.ndarray],
+    confidences: List[float],
+    selected_polygon_index: int,
+    roi_bbox: Optional[Tuple[int, int, int, int]] = None,
+) -> np.ndarray:
+    overlay = image_bgr.copy()
+    height, width = image_bgr.shape[:2]
+    selected_mask = np.zeros((height, width), dtype=np.uint8)
+
+    for idx, polygon in enumerate(polygons):
+        if polygon.ndim != 2 or polygon.shape[0] < 3:
+            continue
+        points = np.round(polygon).astype(np.int32)
+        points[:, 0] = np.clip(points[:, 0], 0, width - 1)
+        points[:, 1] = np.clip(points[:, 1], 0, height - 1)
+        contour = points.reshape(-1, 1, 2)
+        if idx == selected_polygon_index:
+            cv2.fillPoly(selected_mask, [contour], 255)
+        else:
+            cv2.polylines(overlay, [contour], True, (120, 210, 255), 1, cv2.LINE_AA)
+
+    blur_size = max(31, int(round(min(width, height) * 0.035)))
+    if blur_size % 2 == 0:
+        blur_size += 1
+    heat_mask = cv2.GaussianBlur(selected_mask, (blur_size, blur_size), 0)
+    heatmap = cv2.applyColorMap(heat_mask, cv2.COLORMAP_JET)
+    heatmap[selected_mask == 0] = (0, 0, 0)
+    overlay = cv2.addWeighted(overlay, 0.76, heatmap, 0.42, 0)
+
+    if 0 <= selected_polygon_index < len(polygons):
+        selected_points = np.round(polygons[selected_polygon_index]).astype(np.int32)
+        selected_points[:, 0] = np.clip(selected_points[:, 0], 0, width - 1)
+        selected_points[:, 1] = np.clip(selected_points[:, 1], 0, height - 1)
+        contour = selected_points.reshape(-1, 1, 2)
+        cv2.polylines(overlay, [contour], True, (0, 255, 255), 3, cv2.LINE_AA)
+
+        x_min = int(np.min(selected_points[:, 0]))
+        y_min = int(np.min(selected_points[:, 1]))
+        label_y = max(28, y_min - 10)
+        conf = confidences[selected_polygon_index] if selected_polygon_index < len(confidences) else None
+        label = "Model-detected pipe rim" if conf is None else f"Model-detected pipe rim confidence {conf * 100:.0f}%"
+        cv2.putText(overlay, label, (max(12, x_min), label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (255, 255, 255), 3, cv2.LINE_AA)
+        cv2.putText(overlay, label, (max(12, x_min), label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (0, 120, 140), 1, cv2.LINE_AA)
+
+    if roi_bbox is not None:
+        x1, y1, x2, y2 = roi_bbox
+        cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 200, 0), 2, cv2.LINE_AA)
+    return overlay
+
+
 def crop_bgr_to_bbox(
     image_bgr: np.ndarray,
     bbox: Tuple[int, int, int, int],
@@ -3138,10 +3291,26 @@ def crop_bgr_to_bbox(
 
 
 def measurement_zoom_bbox(image_bgr: np.ndarray, measurement: PipeMeasurement, radius_multiplier: float = 1.45) -> Tuple[int, int, int, int]:
+    return circle_zoom_bbox(
+        image_bgr,
+        measurement.center_x_px,
+        measurement.center_y_px,
+        measurement.radius_px,
+        radius_multiplier=radius_multiplier,
+    )
+
+
+def circle_zoom_bbox(
+    image_bgr: np.ndarray,
+    center_x: float,
+    center_y: float,
+    radius: float,
+    radius_multiplier: float = 1.45,
+) -> Tuple[int, int, int, int]:
     height, width = image_bgr.shape[:2]
-    half_size = max(40, int(round(measurement.radius_px * radius_multiplier)))
-    cx = int(round(measurement.center_x_px))
-    cy = int(round(measurement.center_y_px))
+    half_size = max(40, int(round(radius * radius_multiplier)))
+    cx = int(round(center_x))
+    cy = int(round(center_y))
     return (
         max(0, cx - half_size),
         max(0, cy - half_size),
@@ -3232,6 +3401,102 @@ def draw_outer_circle_overlay(
         cv2.putText(overlay, status, (20, y + 14), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 5, cv2.LINE_AA)
         cv2.putText(overlay, status, (20, y + 14), cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3, cv2.LINE_AA)
     return overlay
+
+
+def draw_fitted_diameter_reference_overlay(
+    image_bgr: np.ndarray,
+    measurement: PipeMeasurement,
+    processed: Dict[str, np.ndarray],
+    circle_color: Tuple[int, int, int] = (0, 255, 0),
+) -> np.ndarray:
+    overlay = image_bgr.copy()
+    center = (int(round(measurement.center_x_px)), int(round(measurement.center_y_px)))
+    radius = int(round(measurement.radius_px))
+    x1, y1, x2, y2 = processed.get("roi_bbox", (0, 0, image_bgr.shape[1], image_bgr.shape[0]))
+
+    cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 200, 0), 2, cv2.LINE_AA)
+    cv2.circle(overlay, center, radius, circle_color, 3, cv2.LINE_AA)
+    left = (center[0] - radius, center[1])
+    right = (center[0] + radius, center[1])
+    cv2.line(overlay, left, right, circle_color, 2, cv2.LINE_AA)
+    cv2.circle(overlay, left, 4, circle_color, -1, cv2.LINE_AA)
+    cv2.circle(overlay, right, 4, circle_color, -1, cv2.LINE_AA)
+    cv2.circle(overlay, center, 5, (0, 0, 255), -1, cv2.LINE_AA)
+    return overlay
+
+
+def draw_detected_contour_overlay(
+    image_bgr: np.ndarray,
+    measurement: PipeMeasurement,
+    processed: Dict[str, np.ndarray],
+) -> np.ndarray:
+    overlay = image_bgr.copy()
+    center = (int(round(measurement.center_x_px)), int(round(measurement.center_y_px)))
+    x1, y1, x2, y2 = processed.get("roi_bbox", (0, 0, image_bgr.shape[1], image_bgr.shape[0]))
+    cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 200, 0), 2, cv2.LINE_AA)
+
+    points = measurement.contour_points.astype(np.int32)
+    if len(points) > 1:
+        cv2.polylines(overlay, [points.reshape(-1, 1, 2)], True, (0, 165, 255), 2, cv2.LINE_AA)
+        step = max(1, len(points) // 180)
+        for point in points[::step]:
+            cv2.circle(overlay, tuple(point), 2, (0, 255, 255), -1, cv2.LINE_AA)
+    cv2.circle(overlay, center, 5, (0, 0, 255), -1, cv2.LINE_AA)
+    return overlay
+
+
+def draw_fitted_diameter_reference_from_wall(
+    image_bgr: np.ndarray,
+    center_x: float,
+    center_y: float,
+    radius: float,
+    processed: Dict[str, np.ndarray],
+    circle_color: Tuple[int, int, int],
+) -> np.ndarray:
+    measurement = PipeMeasurement(
+        filename="",
+        center_x_px=float(center_x),
+        center_y_px=float(center_y),
+        radius_px=float(radius),
+        diameter_px=float(radius * 2.0),
+        diameter_mm=float(radius * 2.0),
+        roundness_px=0.0,
+        roundness_mm=0.0,
+        max_abs_deviation_px=0.0,
+        max_abs_deviation_mm=0.0,
+        contour_points=np.empty((0, 2), dtype=np.float32),
+        fitting_inliers=np.empty((0, 2), dtype=np.float32),
+        signed_errors_px=np.empty((0,), dtype=np.float32),
+        mm_per_pixel=1.0,
+    )
+    return draw_fitted_diameter_reference_overlay(image_bgr, measurement, processed, circle_color=circle_color)
+
+
+def draw_detected_contour_from_wall(
+    image_bgr: np.ndarray,
+    center_x: float,
+    center_y: float,
+    radius: float,
+    contour_points: np.ndarray,
+    processed: Dict[str, np.ndarray],
+) -> np.ndarray:
+    measurement = PipeMeasurement(
+        filename="",
+        center_x_px=float(center_x),
+        center_y_px=float(center_y),
+        radius_px=float(radius),
+        diameter_px=float(radius * 2.0),
+        diameter_mm=float(radius * 2.0),
+        roundness_px=0.0,
+        roundness_mm=0.0,
+        max_abs_deviation_px=0.0,
+        max_abs_deviation_mm=0.0,
+        contour_points=contour_points.astype(np.float32),
+        fitting_inliers=contour_points.astype(np.float32),
+        signed_errors_px=np.empty((0,), dtype=np.float32),
+        mm_per_pixel=1.0,
+    )
+    return draw_detected_contour_overlay(image_bgr, measurement, processed)
 
 
 def draw_deviation_heat_overlay(
@@ -3332,10 +3597,13 @@ def draw_pipe_wall_overlay(
     measurement: PipeMeasurement,
     wall_detection: Optional[PipeWallDetection],
     processed: Dict[str, np.ndarray],
+    unit: str = "px",
+    mm_per_pixel: float = 1.0,
 ) -> np.ndarray:
     overlay = image_bgr.copy()
     x1, y1, x2, y2 = processed.get("roi_bbox", (0, 0, image_bgr.shape[1], image_bgr.shape[0]))
     cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 200, 0), 2, cv2.LINE_AA)
+    value_scale = float(mm_per_pixel) if unit == "mm" else 1.0
 
     if wall_detection is not None:
         inner_center = (int(round(wall_detection.inner_center_x_px)), int(round(wall_detection.inner_center_y_px)))
@@ -3368,8 +3636,9 @@ def draw_pipe_wall_overlay(
         cv2.circle(overlay, inner_left, 4, (255, 255, 0), -1, cv2.LINE_AA)
         cv2.circle(overlay, inner_right, 4, (255, 255, 0), -1, cv2.LINE_AA)
         inner_label_pos = (max(10, inner_left[0]), max(24, inner_center[1] - 14))
-        cv2.putText(overlay, f"Inner dia: {wall_detection.inner_radius_px * 2.0:.1f} px", inner_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
-        cv2.putText(overlay, f"Inner dia: {wall_detection.inner_radius_px * 2.0:.1f} px", inner_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (160, 120, 0), 1, cv2.LINE_AA)
+        inner_diameter_text = f"Inner dia: {wall_detection.inner_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Inner dia: {wall_detection.inner_radius_px * 2.0:.1f} px"
+        cv2.putText(overlay, inner_diameter_text, inner_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
+        cv2.putText(overlay, inner_diameter_text, inner_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (160, 120, 0), 1, cv2.LINE_AA)
 
         outer_center = (int(round(wall_detection.outer_center_x_px)), int(round(wall_detection.outer_center_y_px)))
         outer_radius = int(round(wall_detection.outer_radius_px))
@@ -3400,16 +3669,17 @@ def draw_pipe_wall_overlay(
         cv2.circle(overlay, outer_top, 4, (0, 255, 0), -1, cv2.LINE_AA)
         cv2.circle(overlay, outer_bottom, 4, (0, 255, 0), -1, cv2.LINE_AA)
         outer_label_pos = (min(max(10, outer_center[0] + 10), image_bgr.shape[1] - 260), max(24, outer_top[1] + 24))
-        cv2.putText(overlay, f"Outer fit dia: {wall_detection.outer_radius_px * 2.0:.1f} px", outer_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
-        cv2.putText(overlay, f"Outer fit dia: {wall_detection.outer_radius_px * 2.0:.1f} px", outer_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 130, 0), 1, cv2.LINE_AA)
+        outer_diameter_text = f"Outer fit dia: {wall_detection.outer_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Outer fit dia: {wall_detection.outer_radius_px * 2.0:.1f} px"
+        cv2.putText(overlay, outer_diameter_text, outer_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
+        cv2.putText(overlay, outer_diameter_text, outer_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 130, 0), 1, cv2.LINE_AA)
         text_lines = [
             "Outer/inner rim view",
             "Magenta/Cyan: sampled/fitted inner",
             "Orange/Green: sampled/fitted outer",
-            f"Inner fitted diameter: {wall_detection.inner_radius_px * 2.0:.1f} px",
-            f"Outer fitted diameter: {wall_detection.outer_radius_px * 2.0:.1f} px",
-            f"Wall thickness: {wall_detection.wall_thickness_px:.1f} px",
-            f"Range: {wall_detection.wall_thickness_min_px:.1f}-{wall_detection.wall_thickness_max_px:.1f} px",
+            f"Inner fitted diameter: {wall_detection.inner_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Inner fitted diameter: {wall_detection.inner_radius_px * 2.0:.1f} px",
+            f"Outer fitted diameter: {wall_detection.outer_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Outer fitted diameter: {wall_detection.outer_radius_px * 2.0:.1f} px",
+            f"Wall thickness: {wall_detection.wall_thickness_px * value_scale:.2f} {unit}" if unit == "mm" else f"Wall thickness: {wall_detection.wall_thickness_px:.1f} px",
+            f"Range: {wall_detection.wall_thickness_min_px * value_scale:.2f}-{wall_detection.wall_thickness_max_px * value_scale:.2f} {unit}" if unit == "mm" else f"Range: {wall_detection.wall_thickness_min_px:.1f}-{wall_detection.wall_thickness_max_px:.1f} px",
         ]
     else:
         detected_center = (int(round(measurement.center_x_px)), int(round(measurement.center_y_px)))
@@ -3420,8 +3690,9 @@ def draw_pipe_wall_overlay(
         detected_right = (detected_center[0] + detected_radius, detected_center[1])
         cv2.line(overlay, detected_left, detected_right, (255, 255, 0), 2, cv2.LINE_AA)
         label_pos = (max(10, detected_left[0]), max(24, detected_center[1] - 14))
-        cv2.putText(overlay, f"Detected dia: {measurement.radius_px * 2.0:.1f} px", label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
-        cv2.putText(overlay, f"Detected dia: {measurement.radius_px * 2.0:.1f} px", label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (160, 120, 0), 1, cv2.LINE_AA)
+        detected_diameter_text = f"Detected dia: {measurement.radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Detected dia: {measurement.radius_px * 2.0:.1f} px"
+        cv2.putText(overlay, detected_diameter_text, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
+        cv2.putText(overlay, detected_diameter_text, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (160, 120, 0), 1, cv2.LINE_AA)
         text_lines = [
             "Outer/inner rim view",
             "Second rim not found clearly",
@@ -3766,12 +4037,15 @@ def render_system_status(
     calibration: Optional[CameraCalibration],
     standards_contract: Optional[Dict[str, object]],
     saved_scale: Optional[Dict[str, object]],
+    checkerboard_scale_candidate: Optional[Dict[str, object]] = None,
 ) -> None:
     st.sidebar.subheader("System Status")
-    if saved_scale is None:
-        st.sidebar.info("No saved millimeter scale.")
-    else:
+    if saved_scale is not None:
         st.sidebar.success(f"Saved scale: {float(saved_scale['mm_per_pixel']):.6f} mm/px.")
+    elif checkerboard_scale_candidate is not None:
+        st.sidebar.success(f"Tobias calibration: {float(checkerboard_scale_candidate['mm_per_pixel']):.6f} mm/px.")
+    else:
+        st.sidebar.info("No millimeter calibration available.")
 
 
 def render_sidebar_brand() -> None:
@@ -5887,25 +6161,126 @@ def render_visual_analysis(
         unit=unit,
         wall_detection=wall_detection,
     )
-    wall_overlay = draw_pipe_wall_overlay(processed["full_image_bgr"], wall_reference, wall_detection, processed)
-    # Show both inner & outer deviation on the heat overlay when wall detection is available
-    inner_for_heat = wall_reference_measurement if (wall_detection is not None and wall_reference_measurement is not None and measurement is not wall_reference_measurement) else None
-    heat_overlay = draw_deviation_heat_overlay(processed["full_image_bgr"], measurement, processed, second_measurement=inner_for_heat)
+    wall_overlay = draw_pipe_wall_overlay(
+        processed["full_image_bgr"],
+        wall_reference,
+        wall_detection,
+        processed,
+        unit=unit,
+        mm_per_pixel=measurement.mm_per_pixel,
+    )
+    if wall_detection is not None:
+        inner_fitted_reference_overlay = draw_fitted_diameter_reference_from_wall(
+            processed["full_image_bgr"],
+            wall_detection.inner_center_x_px,
+            wall_detection.inner_center_y_px,
+            wall_detection.inner_radius_px,
+            processed,
+            circle_color=(255, 255, 0),
+        )
+        inner_detected_contour_overlay = draw_detected_contour_from_wall(
+            processed["full_image_bgr"],
+            wall_detection.inner_center_x_px,
+            wall_detection.inner_center_y_px,
+            wall_detection.inner_radius_px,
+            wall_detection.inner_points,
+            processed,
+        )
+        outer_fitted_reference_overlay = draw_fitted_diameter_reference_from_wall(
+            processed["full_image_bgr"],
+            wall_detection.outer_center_x_px,
+            wall_detection.outer_center_y_px,
+            wall_detection.outer_radius_px,
+            processed,
+            circle_color=(0, 255, 0),
+        )
+        outer_detected_contour_overlay = draw_detected_contour_from_wall(
+            processed["full_image_bgr"],
+            wall_detection.outer_center_x_px,
+            wall_detection.outer_center_y_px,
+            wall_detection.outer_radius_px,
+            wall_detection.outer_points,
+            processed,
+        )
+        inner_zoom_bbox = circle_zoom_bbox(
+            processed["full_image_bgr"],
+            wall_detection.inner_center_x_px,
+            wall_detection.inner_center_y_px,
+            wall_detection.inner_radius_px,
+        )
+        outer_zoom_bbox = circle_zoom_bbox(
+            processed["full_image_bgr"],
+            wall_detection.outer_center_x_px,
+            wall_detection.outer_center_y_px,
+            wall_detection.outer_radius_px,
+        )
+        zoom_inner_fitted_reference = crop_bgr_to_bbox(inner_fitted_reference_overlay, inner_zoom_bbox, padding_fraction=0.04)
+        zoom_inner_detected_contour = crop_bgr_to_bbox(inner_detected_contour_overlay, inner_zoom_bbox, padding_fraction=0.04)
+        zoom_outer_fitted_reference = crop_bgr_to_bbox(outer_fitted_reference_overlay, outer_zoom_bbox, padding_fraction=0.04)
+        zoom_outer_detected_contour = crop_bgr_to_bbox(outer_detected_contour_overlay, outer_zoom_bbox, padding_fraction=0.04)
+    else:
+        fitted_reference_overlay = draw_fitted_diameter_reference_overlay(processed["full_image_bgr"], measurement, processed)
+        detected_contour_overlay = draw_detected_contour_overlay(processed["full_image_bgr"], measurement, processed)
+        zoom_bbox = measurement_zoom_bbox(processed["full_image_bgr"], measurement)
+        zoom_fitted_reference = crop_bgr_to_bbox(fitted_reference_overlay, zoom_bbox, padding_fraction=0.04)
+        zoom_detected_contour = crop_bgr_to_bbox(detected_contour_overlay, zoom_bbox, padding_fraction=0.04)
+    if wall_detection is not None:
+        inner_for_heat = build_inner_wall_measurement(wall_reference, wall_detection)
+        outer_for_heat = build_outer_wall_measurement(wall_reference, wall_detection)
+        heat_overlay = draw_deviation_heat_overlay(
+            processed["full_image_bgr"],
+            outer_for_heat,
+            processed,
+            second_measurement=inner_for_heat,
+        )
+    else:
+        heat_overlay = draw_deviation_heat_overlay(processed["full_image_bgr"], measurement, processed)
     zoom_bbox = measurement_zoom_bbox(processed["full_image_bgr"], measurement)
-    zoom_overlay = crop_bgr_to_bbox(full_overlay, zoom_bbox, padding_fraction=0.04)
-    zoom_wall = crop_bgr_to_bbox(wall_overlay, zoom_bbox, padding_fraction=0.04)
+    wall_zoom_bbox = (
+        circle_zoom_bbox(
+            processed["full_image_bgr"],
+            wall_detection.outer_center_x_px,
+            wall_detection.outer_center_y_px,
+            wall_detection.outer_radius_px,
+            radius_multiplier=1.75,
+        )
+        if wall_detection is not None
+        else zoom_bbox
+    )
+    zoom_wall = crop_bgr_to_bbox(wall_overlay, wall_zoom_bbox, padding_fraction=0.10)
     zoom_heat = crop_bgr_to_bbox(heat_overlay, zoom_bbox, padding_fraction=0.04)
 
     overview_col, detail_col = st.columns([1.45, 1.0], gap="large")
     with overview_col:
+        if processed.get("model_detection_overlay") is not None:
+            st.markdown("#### Model-detected pipe rim")
+            st.image(bgr_to_rgb(processed["model_detection_overlay"]), width="stretch")
         st.markdown("#### Full measurement overlay")
         st.image(bgr_to_rgb(full_overlay), width="stretch")
     with detail_col:
-        st.markdown("#### Zoomed rim detail")
-        st.image(bgr_to_rgb(zoom_overlay), width="stretch")
+        if wall_detection is not None:
+            st.markdown("#### Fitted inner diameter reference")
+            st.image(bgr_to_rgb(zoom_inner_fitted_reference), width="stretch")
+            st.caption("Cyan = fitted inner diameter circle and diameter line; red = fitted inner center point.")
+            st.markdown("#### Detected inner rim contour")
+            st.image(bgr_to_rgb(zoom_inner_detected_contour), width="stretch")
+            st.caption("Orange/yellow = detected raw inner rim contour points; red = fitted inner center point.")
+            st.markdown("#### Fitted outer diameter reference")
+            st.image(bgr_to_rgb(zoom_outer_fitted_reference), width="stretch")
+            st.caption("Green = fitted outer diameter circle and diameter line; red = fitted outer center point.")
+            st.markdown("#### Detected outer rim contour")
+            st.image(bgr_to_rgb(zoom_outer_detected_contour), width="stretch")
+            st.caption("Orange/yellow = detected raw outer rim contour points; red = fitted outer center point.")
+        else:
+            st.markdown("#### Fitted diameter reference")
+            st.image(bgr_to_rgb(zoom_fitted_reference), width="stretch")
+            st.caption("Green = fitted diameter circle and diameter line; red = fitted center point.")
+            st.markdown("#### Detected rim contour")
+            st.image(bgr_to_rgb(zoom_detected_contour), width="stretch")
+            st.caption("Orange/yellow = detected raw rim contour points; red = fitted center point.")
         st.markdown("#### Inner / outer rim guide")
         st.image(bgr_to_rgb(zoom_wall), width="stretch")
-        st.markdown("#### Signed deviation heat overlay")
+        st.markdown("#### Inner / outer deviation heat overlay")
         st.image(bgr_to_rgb(zoom_heat), width="stretch")
 
     render_pipe_wall_summary(wall_detection, unit, measurement.mm_per_pixel)
@@ -5960,7 +6335,6 @@ def main() -> None:
 
     with st.sidebar:
         render_sidebar_brand()
-        render_system_status(calibration, standards_contract, saved_scale)
         st.header("Upload Test Image")
         test_file = st.file_uploader("Test pipe image", type=["bmp", "png", "jpg", "jpeg"], key="test")
 
@@ -6041,6 +6415,7 @@ def main() -> None:
             raise ValueError(f"Could not decode image: {test_file.name}")
         model_roi_note = None
         model_warning = None
+        model_detection_overlay = None
         try:
             model_path = pipe_segmentation_model_path()
             if model_path is None:
@@ -6049,7 +6424,7 @@ def main() -> None:
                 )
             pipe_model = load_pipe_segmentation_model(str(model_path))
             with st.spinner("Detecting pipe ROI with segmentation model..."):
-                roi_bbox_override, model_roi_note = detect_model_pipe_roi(preview_image, pipe_model, padding_fraction=0.15)
+                roi_bbox_override, model_roi_note, model_detection_overlay = detect_model_pipe_roi(preview_image, pipe_model, padding_fraction=0.15)
         except Exception as model_exc:
             with st.spinner("AI ROI detection failed; trying OpenCV fallback..."):
                 roi_bbox_override, fallback_note = detect_bright_rim_roi(preview_image, padding_multiplier=1.40)
@@ -6069,6 +6444,8 @@ def main() -> None:
             test_note = f"{model_roi_note}; {test_note}"
             if model_warning is not None:
                 test_processed["model_warning"] = model_warning
+            if model_detection_overlay is not None:
+                test_processed["model_detection_overlay"] = model_detection_overlay
     except Exception as exc:
         st.error(f"Inspection failed: {exc}")
         return
@@ -6115,49 +6492,74 @@ def main() -> None:
     render_measurement_quality(raw_test, test_note, "pixel_only")
     render_pixel_interpretation(raw_test)
 
-    st.subheader("Scale To Millimeters")
-    scale_options = ["Pixel only"]
-    if saved_scale is not None:
-        scale_options.append("Use saved calibrated scale")
-    if checkerboard_scale_candidate is not None:
-        scale_options.append("Use checkerboard candidate scale")
-    scale_options.append("Calibrate from this image")
-    scale_mode = st.radio(
-        "Scale mode",
-        scale_options,
-        horizontal=True,
+    st.subheader("Measurement Scale")
+    active_calibration = saved_scale or checkerboard_scale_candidate
+    active_calibration_source = (
+        "saved_calibrated_scale"
+        if saved_scale is not None
+        else "checkerboard_candidate_scale"
+        if checkerboard_scale_candidate is not None
+        else None
     )
-    if saved_scale is None:
-        st.caption("No saved calibrated scale yet. Calibrate from this image once, then save it for later inspections.")
+    scale_view_options = ["Pixel view"]
+    if active_calibration is not None:
+        scale_view_options.append("Calibrated mm view")
+    scale_view = st.segmented_control(
+        "Measurement view",
+        scale_view_options,
+        default="Calibrated mm view" if active_calibration is not None else "Pixel view",
+    )
 
     scale_source = "pixel_only"
     mm_per_pixel = None
     calibration_details: Optional[Dict[str, object]] = None
 
-    if scale_mode == "Use saved calibrated scale" and saved_scale is not None:
-        mm_per_pixel = float(saved_scale["mm_per_pixel"])
-        scale_source = "saved_calibrated_scale"
-        calibration_details = saved_scale
-        st.caption(
-            "Saved scale is valid only when camera distance, zoom, resolution, angle, and pipe plane are unchanged."
-        )
-    elif scale_mode == "Use checkerboard candidate scale" and checkerboard_scale_candidate is not None:
-        mm_per_pixel = float(checkerboard_scale_candidate["mm_per_pixel"])
-        scale_source = "checkerboard_candidate_scale"
-        calibration_details = checkerboard_scale_candidate
-        scale_std = checkerboard_scale_candidate.get("scale_std_mm_per_pixel")
+    if scale_view == "Calibrated mm view" and active_calibration is not None:
+        mm_per_pixel = float(active_calibration["mm_per_pixel"])
+        scale_source = active_calibration_source or "calibrated_scale"
+        calibration_details = active_calibration
+        scale_std = active_calibration.get("scale_std_mm_per_pixel")
+        scale_variation_text = ""
         if scale_std is not None:
             try:
                 scale_variation_pct = float(scale_std) / mm_per_pixel * 100.0
+                scale_variation_text = f", variation +/-{scale_variation_pct:.2f}%"
             except (TypeError, ValueError, ZeroDivisionError):
-                scale_variation_pct = float("nan")
-            st.warning(
-                f"Using checkerboard candidate scale for review only: {mm_per_pixel:.8f} mm/px. "
-                f"Stored scale variation is {scale_variation_pct:.1f}%, so do not use this for final acceptance."
-            )
+                scale_variation_text = ""
+        calibration_label = (
+            "saved calibration"
+            if active_calibration_source == "saved_calibrated_scale"
+            else "Tobias calibration"
+        )
+        st.success(f"Using {calibration_label}: {mm_per_pixel:.8f} mm/px{scale_variation_text}.")
+        st.caption(
+            "Valid only when camera distance, zoom, focus, resolution, angle, and pipe plane match the calibration setup."
+        )
+    elif active_calibration is None:
+        st.info("No calibration scale is available yet. Showing pixel-only measurement.")
+    else:
+        st.caption("Pixel view selected. Millimeter values and standards checks use calibrated mm view.")
+
+    with st.expander("Calibration status", expanded=False):
+        if checkerboard_scale_candidate is not None:
+            checker_mm_per_pixel = float(checkerboard_scale_candidate["mm_per_pixel"])
+            checker_scale_std = checkerboard_scale_candidate.get("scale_std_mm_per_pixel")
+            status_cols = st.columns(2)
+            status_cols[0].metric("Tobias calibration", f"{checker_mm_per_pixel:.8f} mm/px")
+            if checker_scale_std is not None:
+                try:
+                    checker_variation_pct = float(checker_scale_std) / checker_mm_per_pixel * 100.0
+                    status_cols[1].metric("Scale variation", f"+/-{checker_variation_pct:.2f}%")
+                except (TypeError, ValueError, ZeroDivisionError):
+                    status_cols[1].metric("Scale variation", "not available")
+            else:
+                status_cols[1].metric("Scale variation", "not available")
         else:
-            st.warning("Using checkerboard candidate scale for review only. Do not use this for final acceptance.")
-    elif scale_mode == "Calibrate from this image":
+            st.caption("No Tobias calibration found.")
+        if saved_scale is not None:
+            st.caption(f"Saved scale: {float(saved_scale['mm_per_pixel']):.8f} mm/px.")
+
+    with st.expander("Advanced: calibrate from this image", expanded=False):
         outer_reference_diameter_px = (
             wall_target_detection.outer_radius_px * 2.0
             if wall_target_detection is not None
@@ -6176,24 +6578,17 @@ def main() -> None:
                 st.metric("Detected outer diameter", f"{outer_reference_diameter_px:.2f} px")
             else:
                 st.metric("Detected outer diameter", "not available")
+        manual_mm_per_pixel = None
         if not np.isfinite(outer_reference_diameter_px) or outer_reference_diameter_px <= 0:
             st.error("Outer wall diameter was not detected clearly enough for outer-diameter calibration.")
         else:
-            mm_per_pixel = compute_mm_per_pixel_from_known_diameter(outer_reference_diameter_px, known_test_diameter_mm)
-        scale_source = "current_image_known_outer_diameter"
-        calibration_details = {
-            "mm_per_pixel": mm_per_pixel,
-            "source": scale_source,
-            "reference_diameter_mm": known_test_diameter_mm,
-            "reference_diameter_px": outer_reference_diameter_px,
-            "reference_filename": test_file.name,
-            "measurement_target": "Outer pipe diameter calibration reference",
-        }
+            manual_mm_per_pixel = compute_mm_per_pixel_from_known_diameter(outer_reference_diameter_px, known_test_diameter_mm)
+            st.caption(f"Manual scale preview: {manual_mm_per_pixel:.8f} mm/px")
         save_label = "Update saved calibrated scale" if saved_scale is not None else "Save calibrated scale"
-        if st.button(save_label, type="secondary", use_container_width=True, disabled=mm_per_pixel is None):
+        if st.button(save_label, type="secondary", use_container_width=True, disabled=manual_mm_per_pixel is None):
             save_scale_config(
-                mm_per_pixel,
-                scale_source,
+                manual_mm_per_pixel,
+                "current_image_known_outer_diameter",
                 known_test_diameter_mm,
                 outer_reference_diameter_px,
                 test_file.name,

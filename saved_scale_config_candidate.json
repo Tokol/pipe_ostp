@@ -1,0 +1,13 @@
+{
+  "mm_per_pixel": 0.0754428205409135,
+  "source": "checkerboard_plane_center_scale",
+  "reference_diameter_mm": 0.0,
+  "reference_diameter_px": 0.0,
+  "reference_filename": "Image_20260506163023404.bmp",
+  "measurement_target": "checkerboard plane at image center",
+  "created_at": "2026-05-07T11:21:45+03:00",
+  "valid_for": "same camera, same distance, same zoom, same resolution, same pipe plane",
+  "square_size_mm": 5.0,
+  "scale_std_mm_per_pixel": 0.00035177495723609097,
+  "accepted_images": 6
+}
