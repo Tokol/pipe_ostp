@@ -6454,11 +6454,9 @@ def main() -> None:
     render_pixel_interpretation(raw_test)
 
     st.subheader("Measurement Scale")
-    active_calibration = saved_scale or checkerboard_scale_candidate
+    active_calibration = checkerboard_scale_candidate
     active_calibration_source = (
-        "saved_calibrated_scale"
-        if saved_scale is not None
-        else "checkerboard_candidate_scale"
+        "checkerboard_candidate_scale"
         if checkerboard_scale_candidate is not None
         else None
     )
@@ -6517,8 +6515,6 @@ def main() -> None:
                 status_cols[1].metric("Scale variation", "not available")
         else:
             st.caption("No Tobias calibration found.")
-        if saved_scale is not None:
-            st.caption(f"Saved scale: {float(saved_scale['mm_per_pixel']):.8f} mm/px.")
 
     with st.expander("Advanced: calibrate from this image", expanded=False):
         outer_reference_diameter_px = (
