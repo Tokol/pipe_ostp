@@ -72,6 +72,7 @@ TOBIAS_CALIBRATION_FALLBACK = {
     "scale_std_mm_per_pixel": 0.00035177495723609097,
     "accepted_images": 6,
 }
+DIAMETER_OFFSET_CORRECTION_MM = 0.687
 TOLERANCE_PATH = APP_DIR / "TOLERANSTABELL.xlsx"
 CONTRACT_DIR = APP_DIR / "ostb_data_map_contract"
 STANDARDS_CONTRACT_PATH = CONTRACT_DIR / "standards.json"
@@ -2037,13 +2038,14 @@ def measure_pipe_roundness_pixels_robust(
 
 
 def convert_measurement_scale(measurement: PipeMeasurement, mm_per_pixel: float) -> PipeMeasurement:
+    corrected_diameter_mm = measurement.diameter_px * mm_per_pixel + DIAMETER_OFFSET_CORRECTION_MM
     return PipeMeasurement(
         filename=measurement.filename,
         center_x_px=measurement.center_x_px,
         center_y_px=measurement.center_y_px,
         radius_px=measurement.radius_px,
         diameter_px=measurement.diameter_px,
-        diameter_mm=measurement.diameter_px * mm_per_pixel,
+        diameter_mm=corrected_diameter_mm,
         roundness_px=measurement.roundness_px,
         roundness_mm=measurement.roundness_px * mm_per_pixel,
         max_abs_deviation_px=measurement.max_abs_deviation_px,
@@ -3402,8 +3404,9 @@ def draw_outer_circle_overlay(
     status = None
     if tolerance_report is not None:
         status = "PASS" if tolerance_report["overall"] else "FAIL"
+    fitted_diameter_display = measurement.diameter_mm if unit == "mm" else measurement.diameter_px
     lines = [
-        f"Fitted dia: {measurement.diameter_px * value_scale:.3f} {unit}",
+        f"Fitted dia: {fitted_diameter_display:.3f} {unit}",
         f"Real edge PTV: {measurement.roundness_px * value_scale:.4f} {unit}",
         f"Rim points: {len(measurement.contour_points)}",
     ]
@@ -3623,11 +3626,13 @@ def draw_pipe_wall_overlay(
     processed: Dict[str, np.ndarray],
     unit: str = "px",
     mm_per_pixel: float = 1.0,
+    diameter_offset_mm: float = 0.0,
 ) -> np.ndarray:
     overlay = image_bgr.copy()
     x1, y1, x2, y2 = processed.get("roi_bbox", (0, 0, image_bgr.shape[1], image_bgr.shape[0]))
     cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 200, 0), 2, cv2.LINE_AA)
     value_scale = float(mm_per_pixel) if unit == "mm" else 1.0
+    diameter_offset = float(diameter_offset_mm) if unit == "mm" else 0.0
 
     if wall_detection is not None:
         inner_center = (int(round(wall_detection.inner_center_x_px)), int(round(wall_detection.inner_center_y_px)))
@@ -3660,7 +3665,7 @@ def draw_pipe_wall_overlay(
         cv2.circle(overlay, inner_left, 4, (255, 255, 0), -1, cv2.LINE_AA)
         cv2.circle(overlay, inner_right, 4, (255, 255, 0), -1, cv2.LINE_AA)
         inner_label_pos = (max(10, inner_left[0]), max(24, inner_center[1] - 14))
-        inner_diameter_text = f"Inner dia: {wall_detection.inner_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Inner dia: {wall_detection.inner_radius_px * 2.0:.1f} px"
+        inner_diameter_text = f"Inner dia: {wall_detection.inner_radius_px * 2.0 * value_scale + diameter_offset:.2f} {unit}" if unit == "mm" else f"Inner dia: {wall_detection.inner_radius_px * 2.0:.1f} px"
         cv2.putText(overlay, inner_diameter_text, inner_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
         cv2.putText(overlay, inner_diameter_text, inner_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (160, 120, 0), 1, cv2.LINE_AA)
 
@@ -3693,15 +3698,15 @@ def draw_pipe_wall_overlay(
         cv2.circle(overlay, outer_top, 4, (0, 255, 0), -1, cv2.LINE_AA)
         cv2.circle(overlay, outer_bottom, 4, (0, 255, 0), -1, cv2.LINE_AA)
         outer_label_pos = (min(max(10, outer_center[0] + 10), image_bgr.shape[1] - 260), max(24, outer_top[1] + 24))
-        outer_diameter_text = f"Outer fit dia: {wall_detection.outer_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Outer fit dia: {wall_detection.outer_radius_px * 2.0:.1f} px"
+        outer_diameter_text = f"Outer fit dia: {wall_detection.outer_radius_px * 2.0 * value_scale + diameter_offset:.2f} {unit}" if unit == "mm" else f"Outer fit dia: {wall_detection.outer_radius_px * 2.0:.1f} px"
         cv2.putText(overlay, outer_diameter_text, outer_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
         cv2.putText(overlay, outer_diameter_text, outer_label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 130, 0), 1, cv2.LINE_AA)
         text_lines = [
             "Outer/inner rim view",
             "Magenta/Cyan: sampled/fitted inner",
             "Orange/Green: sampled/fitted outer",
-            f"Inner fitted diameter: {wall_detection.inner_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Inner fitted diameter: {wall_detection.inner_radius_px * 2.0:.1f} px",
-            f"Outer fitted diameter: {wall_detection.outer_radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Outer fitted diameter: {wall_detection.outer_radius_px * 2.0:.1f} px",
+            f"Inner fitted diameter: {wall_detection.inner_radius_px * 2.0 * value_scale + diameter_offset:.2f} {unit}" if unit == "mm" else f"Inner fitted diameter: {wall_detection.inner_radius_px * 2.0:.1f} px",
+            f"Outer fitted diameter: {wall_detection.outer_radius_px * 2.0 * value_scale + diameter_offset:.2f} {unit}" if unit == "mm" else f"Outer fitted diameter: {wall_detection.outer_radius_px * 2.0:.1f} px",
             f"Wall thickness: {wall_detection.wall_thickness_px * value_scale:.2f} {unit}" if unit == "mm" else f"Wall thickness: {wall_detection.wall_thickness_px:.1f} px",
             f"Range: {wall_detection.wall_thickness_min_px * value_scale:.2f}-{wall_detection.wall_thickness_max_px * value_scale:.2f} {unit}" if unit == "mm" else f"Range: {wall_detection.wall_thickness_min_px:.1f}-{wall_detection.wall_thickness_max_px:.1f} px",
         ]
@@ -3714,7 +3719,7 @@ def draw_pipe_wall_overlay(
         detected_right = (detected_center[0] + detected_radius, detected_center[1])
         cv2.line(overlay, detected_left, detected_right, (255, 255, 0), 2, cv2.LINE_AA)
         label_pos = (max(10, detected_left[0]), max(24, detected_center[1] - 14))
-        detected_diameter_text = f"Detected dia: {measurement.radius_px * 2.0 * value_scale:.2f} {unit}" if unit == "mm" else f"Detected dia: {measurement.radius_px * 2.0:.1f} px"
+        detected_diameter_text = f"Detected dia: {measurement.radius_px * 2.0 * value_scale + diameter_offset:.2f} {unit}" if unit == "mm" else f"Detected dia: {measurement.radius_px * 2.0:.1f} px"
         cv2.putText(overlay, detected_diameter_text, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 3, cv2.LINE_AA)
         cv2.putText(overlay, detected_diameter_text, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.62, (160, 120, 0), 1, cv2.LINE_AA)
         text_lines = [
@@ -3869,13 +3874,13 @@ def build_result_row(
     }
 
     if scale_source != "pixel_only":
-        mcc_dia = roundness_methods["mcc_radius_px"] * 2.0 * test_measurement.mm_per_pixel
-        mic_dia = roundness_methods["mic_diameter_mm"]
+        mcc_dia = roundness_methods["mcc_radius_px"] * 2.0 * test_measurement.mm_per_pixel + DIAMETER_OFFSET_CORRECTION_MM
+        mic_dia = roundness_methods["mic_diameter_px"] * test_measurement.mm_per_pixel + DIAMETER_OFFSET_CORRECTION_MM
         lsc_dia = test_measurement.diameter_mm
         lsc_round = roundness_methods["lsc_roundness_mm"]
         mzc_round = roundness_methods["mzc_roundness_mm"]
-        edge_min = diameter_stats["real_edge_min_diameter_px"] * test_measurement.mm_per_pixel
-        edge_max = diameter_stats["real_edge_max_diameter_px"] * test_measurement.mm_per_pixel
+        edge_min = diameter_stats["real_edge_min_diameter_px"] * test_measurement.mm_per_pixel + DIAMETER_OFFSET_CORRECTION_MM
+        edge_max = diameter_stats["real_edge_max_diameter_px"] * test_measurement.mm_per_pixel + DIAMETER_OFFSET_CORRECTION_MM
         edge_range = diameter_stats["real_edge_diameter_range_px"] * test_measurement.mm_per_pixel
 
         row.update({
@@ -4763,13 +4768,19 @@ def roundness_quality_label(relative_roundness: float) -> Tuple[str, str]:
     return "High deviation", "The detected edge varies strongly from the fitted circle or includes noisy rim points."
 
 
-def render_roundness_evaluation(measurement: PipeMeasurement, unit: str, feature_type: str = "inner") -> Dict[str, object]:
+def render_roundness_evaluation(
+    measurement: PipeMeasurement,
+    unit: str,
+    feature_type: str = "inner",
+    diameter_offset_mm: float = 0.0,
+) -> Dict[str, object]:
     """
     Educational, interactive roundness evaluation based on ISO 12181 concepts.
     Explains LSC, MZC, MCC, and MIC on the actual measurement data.
     Includes method comparison, formulas, computed values, and focused radius-line charts.
     """
     scale = measurement.mm_per_pixel if unit == "mm" else 1.0
+    diameter_offset = diameter_offset_mm if unit == "mm" else 0.0
     roundness_methods = compute_roundness_method_stats(measurement)
 
     lsc_center = np.array([measurement.center_x_px, measurement.center_y_px], dtype=np.float64)
@@ -4797,8 +4808,8 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str, feature
     roundness_lsc = float(roundness_methods["lsc_roundness_px"] * scale)
     roundness_mzc = float(roundness_methods["mzc_roundness_px"] * scale)
     roundness_mcc = float(roundness_methods["mcc_roundness_px"] * scale)
-    mcc_diameter = float(mcc_radius * 2.0 * scale)
-    mic_diameter = float(roundness_methods["mic_diameter_px"] * scale)
+    mcc_diameter = float(mcc_radius * 2.0 * scale + diameter_offset)
+    mic_diameter = float(roundness_methods["mic_diameter_px"] * scale + diameter_offset)
     value = measurement.roundness_mm if unit == "mm" else measurement.roundness_px
     points = measurement.contour_points.astype(np.float64)
 
@@ -5195,6 +5206,9 @@ def render_roundness_evaluation(measurement: PipeMeasurement, unit: str, feature
     diameter_scale = measurement.mm_per_pixel if unit == "mm" else 1.0
     real_edge_min_diameter = diameter_stats["real_edge_min_diameter_px"] * diameter_scale
     real_edge_max_diameter = diameter_stats["real_edge_max_diameter_px"] * diameter_scale
+    if unit == "mm":
+        real_edge_min_diameter += diameter_offset
+        real_edge_max_diameter += diameter_offset
     real_edge_diameter_range = diameter_stats["real_edge_diameter_range_px"] * diameter_scale
 
     def format_error_with_percent(error_value: float) -> str:
@@ -5776,20 +5790,31 @@ def render_chart_explanation(chart_name: str, unit: str) -> None:
             )
 
 
-def render_pipe_wall_summary(wall_detection: Optional[PipeWallDetection], unit: str, mm_per_pixel: float) -> None:
+def render_pipe_wall_summary(
+    wall_detection: Optional[PipeWallDetection],
+    unit: str,
+    mm_per_pixel: float,
+    diameter_offset_mm: float = 0.0,
+) -> None:
     """Minimal summary shown inside visual analysis. Full detail is in render_wall_thickness_review."""
     if wall_detection is None:
         return
     scale = mm_per_pixel if unit == "mm" else 1.0
+    diameter_offset = diameter_offset_mm if unit == "mm" else 0.0
     st.caption(
-        f"Inner Ø {wall_detection.inner_radius_px * 2.0 * scale:.2f} {unit} | "
-        f"Outer Ø {wall_detection.outer_radius_px * 2.0 * scale:.2f} {unit} | "
+        f"Inner Ø {wall_detection.inner_radius_px * 2.0 * scale + diameter_offset:.2f} {unit} | "
+        f"Outer Ø {wall_detection.outer_radius_px * 2.0 * scale + diameter_offset:.2f} {unit} | "
         f"Wall {wall_detection.wall_thickness_px * scale:.2f} {unit} "
         f"(min {wall_detection.wall_thickness_min_px * scale:.2f}, max {wall_detection.wall_thickness_max_px * scale:.2f})"
     )
 
 
-def render_wall_thickness_review(wall_detection: Optional[PipeWallDetection], unit: str, mm_per_pixel: float) -> None:
+def render_wall_thickness_review(
+    wall_detection: Optional[PipeWallDetection],
+    unit: str,
+    mm_per_pixel: float,
+    diameter_offset_mm: float = 0.0,
+) -> None:
     st.markdown("## 🔬 Wall / Thickness Review")
 
     if wall_detection is None:
@@ -5813,10 +5838,11 @@ def render_wall_thickness_review(wall_detection: Optional[PipeWallDetection], un
         return
 
     scale = mm_per_pixel if unit == "mm" else 1.0
+    diameter_offset = diameter_offset_mm if unit == "mm" else 0.0
 
     # ── Derived values ──
-    inner_dia = wall_detection.inner_radius_px * 2.0 * scale
-    outer_dia = wall_detection.outer_radius_px * 2.0 * scale
+    inner_dia = wall_detection.inner_radius_px * 2.0 * scale + diameter_offset
+    outer_dia = wall_detection.outer_radius_px * 2.0 * scale + diameter_offset
     wall_from_dia = (outer_dia - inner_dia) / 2.0
     center_offset = wall_detection.center_offset_px * scale
     wall_min = wall_detection.wall_thickness_min_px * scale
@@ -5994,6 +6020,9 @@ def render_wall_thickness_review(wall_detection: Optional[PipeWallDetection], un
     inner_diameters = 2.0 * np.linalg.norm(inner_pts - inner_ctr, axis=1)
     inner_dmax = float(np.max(inner_diameters)) * scale
     inner_dmin = float(np.min(inner_diameters)) * scale
+    if unit == "mm":
+        inner_dmax += diameter_offset
+        inner_dmin += diameter_offset
     inner_drange = inner_dmax - inner_dmin
     inner_drange_pct = (inner_drange / (inner_dia) * 100.0) if inner_dia > 0 else 0.0
 
@@ -6003,6 +6032,9 @@ def render_wall_thickness_review(wall_detection: Optional[PipeWallDetection], un
     outer_diameters = 2.0 * np.linalg.norm(outer_pts - outer_ctr, axis=1)
     outer_dmax = float(np.max(outer_diameters)) * scale
     outer_dmin = float(np.min(outer_diameters)) * scale
+    if unit == "mm":
+        outer_dmax += diameter_offset
+        outer_dmin += diameter_offset
     outer_drange = outer_dmax - outer_dmin
     outer_drange_pct = (outer_drange / outer_dia * 100.0) if outer_dia > 0 else 0.0
 
@@ -6166,6 +6198,7 @@ def render_visual_analysis(
     tolerance_report: Optional[Dict[str, object]],
     unit: str,
     wall_reference_measurement: Optional[PipeMeasurement] = None,
+    diameter_offset_mm: float = 0.0,
 ) -> None:
     st.subheader("Visual Analysis")
     st.markdown(
@@ -6192,6 +6225,7 @@ def render_visual_analysis(
         processed,
         unit=unit,
         mm_per_pixel=measurement.mm_per_pixel,
+        diameter_offset_mm=diameter_offset_mm,
     )
     if wall_detection is not None:
         inner_fitted_reference_overlay = draw_fitted_diameter_reference_from_wall(
@@ -6307,7 +6341,7 @@ def render_visual_analysis(
         st.markdown("#### Inner / outer deviation heat overlay")
         st.image(bgr_to_rgb(zoom_heat), width="stretch")
 
-    render_pipe_wall_summary(wall_detection, unit, measurement.mm_per_pixel)
+    render_pipe_wall_summary(wall_detection, unit, measurement.mm_per_pixel, diameter_offset_mm=diameter_offset_mm)
 
     diag_a, diag_b, diag_c = st.columns(3, gap="large")
     with diag_a:
@@ -6539,6 +6573,13 @@ def main() -> None:
                 status_cols[1].metric("Scale variation", "not available")
         else:
             st.caption("No Tobias calibration found.")
+        if mm_per_pixel is not None and wall_target_detection is not None:
+            raw_outer_diameter_mm = wall_target_detection.outer_radius_px * 2.0 * mm_per_pixel
+            corrected_outer_diameter_mm = raw_outer_diameter_mm + DIAMETER_OFFSET_CORRECTION_MM
+            correction_cols = st.columns(3)
+            correction_cols[0].metric("Measured OD", f"{raw_outer_diameter_mm:.3f} mm")
+            correction_cols[1].metric("Correction", f"+{DIAMETER_OFFSET_CORRECTION_MM:.3f} mm")
+            correction_cols[2].metric("Corrected OD", f"{corrected_outer_diameter_mm:.3f} mm")
 
     with st.expander("Advanced: calibrate from this image", expanded=False):
         outer_reference_diameter_px = (
@@ -6579,7 +6620,7 @@ def main() -> None:
             st.rerun()
     if mm_per_pixel is not None:
         test_measurement = convert_measurement_scale(raw_test, mm_per_pixel)
-        st.success(f"Scale active: {mm_per_pixel:.6f} mm/px")
+        st.success(f"Scale active: {mm_per_pixel:.6f} mm/px; diameter correction +{DIAMETER_OFFSET_CORRECTION_MM:.3f} mm")
         render_metric_row(test_measurement)
     else:
         test_measurement = raw_test
@@ -6595,8 +6636,18 @@ def main() -> None:
     )
 
     if mm_per_pixel is not None:
-        render_wall_thickness_review(wall_target_detection, unit, mm_per_pixel)
-        roundness_summary = render_roundness_evaluation(test_measurement, unit, resolved_feature_type)
+        render_wall_thickness_review(
+            wall_target_detection,
+            unit,
+            mm_per_pixel,
+            diameter_offset_mm=DIAMETER_OFFSET_CORRECTION_MM,
+        )
+        roundness_summary = render_roundness_evaluation(
+            test_measurement,
+            unit,
+            resolved_feature_type,
+            diameter_offset_mm=DIAMETER_OFFSET_CORRECTION_MM,
+        )
         st.subheader("OSTB Standards")
         compliance_diameter_mm = float(roundness_summary["size_metric_value"]) if roundness_summary is not None else float("nan")
         compliance_diameter_label = str(roundness_summary["size_metric_label"]) if roundness_summary is not None else "Fitted diameter"
@@ -6636,6 +6687,7 @@ def main() -> None:
         tolerance_report,
         unit,
         wall_reference_measurement=inner_reference_measurement,
+        diameter_offset_mm=DIAMETER_OFFSET_CORRECTION_MM if mm_per_pixel is not None else 0.0,
     )
 
     result_df = build_result_row(test_measurement, tolerance_report, standard_label, scale_source, measurement_target)
