@@ -4264,6 +4264,15 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
     gif_data_uri = load_gif_data_uri(str(gif_path))
     accent = "#11823b" if passed else "#b42318"
     background = "rgba(6, 31, 18, 0.52)" if passed else "rgba(44, 12, 10, 0.52)"
+    particle_count = 34 if passed else 24
+    particle_markup = "".join(
+        (
+            f'<span class="ostb-particle" style="--x:{(index * 29) % 100}; '
+            f'--delay:{(index % 11) * 0.08:.2f}s; --duration:{2.2 + (index % 7) * 0.12:.2f}s; '
+            f'--size:{7 + (index % 5) * 2}px; --hue:{42 + (index * 31) % 190};"></span>'
+        )
+        for index in range(particle_count)
+    )
 
     st.markdown(
         f"""
@@ -4288,6 +4297,7 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 padding: 24px;
                 background: {background};
                 animation: ostb-result-overlay-hide 4.2s ease forwards;
+                overflow: hidden;
             }}
             .ostb-result-modal {{
                 width: min(720px, calc(100vw - 32px));
@@ -4298,6 +4308,16 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 padding: 24px;
                 text-align: center;
                 color: #111827;
+                position: relative;
+                z-index: 2;
+            }}
+            .ostb-result-modal.pass {{
+                box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(33, 150, 83, 0.10);
+            }}
+            .ostb-result-modal.fail {{
+                animation: ostb-fail-shake 0.48s cubic-bezier(.36,.07,.19,.97) 0.15s both,
+                    ostb-fail-pulse 1.6s ease-in-out 0.4s 2;
+                box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(180, 35, 24, 0.12);
             }}
             .ostb-result-modal img {{
                 width: min(680px, 88vw);
@@ -4318,8 +4338,78 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 font-size: 0.98rem;
                 line-height: 1.35;
             }}
+            .ostb-particle {{
+                position: absolute;
+                left: calc(var(--x) * 1%);
+                width: var(--size);
+                height: var(--size);
+                pointer-events: none;
+                z-index: 1;
+            }}
+            .ostb-result-overlay.pass .ostb-particle {{
+                bottom: -28px;
+                border-radius: 2px;
+                background: hsl(var(--hue), 86%, 58%);
+                box-shadow: 0 0 10px hsla(var(--hue), 86%, 58%, 0.48);
+                animation: ostb-confetti-rise var(--duration) ease-out var(--delay) 2;
+            }}
+            .ostb-result-overlay.pass .ostb-particle:nth-child(3n) {{
+                border-radius: 999px;
+            }}
+            .ostb-result-overlay.pass .ostb-particle:nth-child(4n) {{
+                width: calc(var(--size) * 0.75);
+                height: calc(var(--size) * 1.45);
+            }}
+            .ostb-result-overlay.fail .ostb-particle {{
+                top: -24px;
+                border-radius: 999px;
+                background: hsl(18, 92%, 56%);
+                box-shadow: 0 0 16px rgba(255, 88, 42, 0.68);
+                animation: ostb-ember-fall var(--duration) ease-in var(--delay) 2;
+            }}
+            .ostb-result-overlay.fail .ostb-particle:nth-child(2n) {{
+                background: hsl(0, 78%, 48%);
+                box-shadow: 0 0 14px rgba(220, 38, 38, 0.58);
+            }}
+            @keyframes ostb-confetti-rise {{
+                0% {{
+                    opacity: 0;
+                    transform: translate3d(-16px, 0, 0) rotate(0deg) scale(0.85);
+                }}
+                14% {{
+                    opacity: 1;
+                }}
+                100% {{
+                    opacity: 0;
+                    transform: translate3d(26px, -105vh, 0) rotate(620deg) scale(1);
+                }}
+            }}
+            @keyframes ostb-ember-fall {{
+                0% {{
+                    opacity: 0;
+                    transform: translate3d(10px, 0, 0) scale(0.8);
+                }}
+                18% {{
+                    opacity: 1;
+                }}
+                100% {{
+                    opacity: 0;
+                    transform: translate3d(-22px, 105vh, 0) scale(0.35);
+                }}
+            }}
+            @keyframes ostb-fail-shake {{
+                10%, 90% {{ transform: translate3d(-1px, 0, 0); }}
+                20%, 80% {{ transform: translate3d(2px, 0, 0); }}
+                30%, 50%, 70% {{ transform: translate3d(-4px, 0, 0); }}
+                40%, 60% {{ transform: translate3d(4px, 0, 0); }}
+            }}
+            @keyframes ostb-fail-pulse {{
+                0%, 100% {{ box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(180, 35, 24, 0.12); }}
+                50% {{ box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 18px rgba(180, 35, 24, 0.04); }}
+            }}
         </style>
-        <div class="ostb-result-overlay" aria-live="polite">
+        <div class="ostb-result-overlay {result_class}" aria-live="polite">
+            {particle_markup}
             <div class="ostb-result-modal {result_class}">
                 <img src="{gif_data_uri}" alt="{status} result">
                 <p class="ostb-result-status">{status}</p>
