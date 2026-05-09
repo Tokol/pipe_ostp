@@ -4277,6 +4277,16 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
     st.markdown(
         f"""
         <style>
+            @keyframes ostb-result-overlay-hide {{
+                0%, 84% {{
+                    opacity: 1;
+                    visibility: visible;
+                }}
+                100% {{
+                    opacity: 0;
+                    visibility: hidden;
+                }}
+            }}
             .ostb-result-overlay {{
                 position: fixed;
                 inset: 0;
@@ -4287,6 +4297,7 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 padding: 24px;
                 background: {background};
                 overflow: hidden;
+                animation: ostb-result-overlay-hide 4.6s ease forwards;
             }}
             .ostb-result-modal {{
                 width: min(720px, calc(100vw - 32px));
