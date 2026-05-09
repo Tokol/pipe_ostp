@@ -4264,6 +4264,7 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
     gif_data_uri = load_gif_data_uri(str(gif_path))
     accent = "#11823b" if passed else "#b42318"
     background = "rgba(6, 31, 18, 0.52)" if passed else "rgba(44, 12, 10, 0.52)"
+    overlay_duration = "4.6s" if passed else "4.4s"
     particle_count = 34 if passed else 24
     particle_markup = "".join(
         (
@@ -4297,7 +4298,7 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 padding: 24px;
                 background: {background};
                 overflow: hidden;
-                animation: ostb-result-overlay-hide 4.6s ease forwards;
+                animation: ostb-result-overlay-hide {overlay_duration} ease forwards;
             }}
             .ostb-result-modal {{
                 width: min(720px, calc(100vw - 32px));
