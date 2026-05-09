@@ -4277,35 +4277,25 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
     st.markdown(
         f"""
         <style>
-            @keyframes ostb-result-overlay-hide {{
-                0%, 82% {{
-                    opacity: 1;
-                    visibility: visible;
-                }}
-                100% {{
-                    opacity: 0;
-                    visibility: hidden;
-                }}
-            }}
             .ostb-result-overlay {{
                 position: fixed;
                 inset: 0;
                 z-index: 999999;
                 display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 24px;
-                background: {background};
-                animation: ostb-result-overlay-hide 4.2s ease forwards;
+                align-items: flex-end;
+                justify-content: flex-end;
+                padding: 18px;
+                background: transparent;
                 overflow: hidden;
+                pointer-events: none;
             }}
             .ostb-result-modal {{
-                width: min(720px, calc(100vw - 32px));
+                width: min(320px, calc(100vw - 32px));
                 border: 1px solid rgba(255, 255, 255, 0.55);
                 border-radius: 8px;
                 background: rgba(255, 255, 255, 0.96);
                 box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30);
-                padding: 24px;
+                padding: 12px;
                 text-align: center;
                 color: #111827;
                 position: relative;
@@ -4320,22 +4310,22 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(180, 35, 24, 0.12);
             }}
             .ostb-result-modal img {{
-                width: min(680px, 88vw);
-                max-height: 68vh;
+                width: 100%;
+                max-height: 210px;
                 object-fit: contain;
-                margin-bottom: 16px;
+                margin-bottom: 8px;
             }}
             .ostb-result-status {{
                 color: {accent};
-                font-size: 2rem;
+                font-size: 1.18rem;
                 font-weight: 800;
                 line-height: 1.1;
-                margin: 0 0 8px 0;
+                margin: 0 0 4px 0;
                 letter-spacing: 0;
             }}
             .ostb-result-reason {{
                 margin: 0;
-                font-size: 0.98rem;
+                font-size: 0.76rem;
                 line-height: 1.35;
             }}
             .ostb-particle {{
@@ -4351,7 +4341,7 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 border-radius: 2px;
                 background: hsl(var(--hue), 86%, 58%);
                 box-shadow: 0 0 10px hsla(var(--hue), 86%, 58%, 0.48);
-                animation: ostb-confetti-rise var(--duration) ease-out var(--delay) 2;
+                animation: ostb-confetti-rise var(--duration) ease-out var(--delay) infinite;
             }}
             .ostb-result-overlay.pass .ostb-particle:nth-child(3n) {{
                 border-radius: 999px;
@@ -4365,7 +4355,7 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 border-radius: 999px;
                 background: hsl(18, 92%, 56%);
                 box-shadow: 0 0 16px rgba(255, 88, 42, 0.68);
-                animation: ostb-ember-fall var(--duration) ease-in var(--delay) 2;
+                animation: ostb-ember-fall var(--duration) ease-in var(--delay) infinite;
             }}
             .ostb-result-overlay.fail .ostb-particle:nth-child(2n) {{
                 background: hsl(0, 78%, 48%);
@@ -4406,6 +4396,18 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
             @keyframes ostb-fail-pulse {{
                 0%, 100% {{ box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(180, 35, 24, 0.12); }}
                 50% {{ box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 18px rgba(180, 35, 24, 0.04); }}
+            }}
+            @media (max-width: 640px) {{
+                .ostb-result-overlay {{
+                    justify-content: center;
+                    padding: 10px;
+                }}
+                .ostb-result-modal {{
+                    width: min(260px, calc(100vw - 20px));
+                }}
+                .ostb-result-modal img {{
+                    max-height: 150px;
+                }}
             }}
         </style>
         <div class="ostb-result-overlay {result_class}" aria-live="polite">
