@@ -4315,7 +4315,7 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(33, 150, 83, 0.10);
             }}
             .ostb-result-modal.fail {{
-                animation: ostb-fail-shake 0.48s cubic-bezier(.36,.07,.19,.97) 0.15s both,
+                animation: ostb-fail-shake 0.85s cubic-bezier(.36,.07,.19,.97) 0.15s both,
                     ostb-fail-pulse 1.6s ease-in-out 0.4s 2;
                 box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(180, 35, 24, 0.12);
             }}
