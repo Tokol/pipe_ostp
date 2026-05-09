@@ -7,4 +7,4 @@ scipy==1.13.1
 openpyxl==3.1.5
 torch==2.2.2
 torchvision==0.17.2
-ultralytics==8.3.231
+dgenerate-ultralytics-headless==8.3.231
