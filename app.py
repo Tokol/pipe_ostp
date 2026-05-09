@@ -18,7 +18,7 @@ import streamlit as st
 
 try:
     import cv2
-except ModuleNotFoundError as exc:  # pragma: no cover - depends on deployment environment.
+except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - depends on deployment environment.
     cv2 = None
     CV2_IMPORT_ERROR = exc
 else:
@@ -41,8 +41,9 @@ else:
 
 if CV2_IMPORT_ERROR is not None:  # pragma: no cover - UI guard for missing host dependency.
     st.error(
-        "OpenCV is not installed in this environment. "
-        "Add `opencv-python-headless==4.10.0.84` to `requirements.txt` "
+        "OpenCV could not load in this environment. "
+        "Keep `opencv-python-headless==4.10.0.84` in `requirements.txt`; "
+        "if the error mentions `libGL.so.1`, add `libgl1` to `packages.txt` "
         "and redeploy the Streamlit app."
     )
     st.caption(f"Import error: {CV2_IMPORT_ERROR}")
