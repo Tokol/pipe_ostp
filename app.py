@@ -4282,20 +4282,19 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 inset: 0;
                 z-index: 999999;
                 display: flex;
-                align-items: flex-end;
-                justify-content: flex-end;
-                padding: 18px;
-                background: transparent;
+                align-items: center;
+                justify-content: center;
+                padding: 24px;
+                background: {background};
                 overflow: hidden;
-                pointer-events: none;
             }}
             .ostb-result-modal {{
-                width: min(320px, calc(100vw - 32px));
+                width: min(720px, calc(100vw - 32px));
                 border: 1px solid rgba(255, 255, 255, 0.55);
                 border-radius: 8px;
                 background: rgba(255, 255, 255, 0.96);
                 box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30);
-                padding: 12px;
+                padding: 24px;
                 text-align: center;
                 color: #111827;
                 position: relative;
@@ -4310,22 +4309,22 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
                 box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30), 0 0 0 8px rgba(180, 35, 24, 0.12);
             }}
             .ostb-result-modal img {{
-                width: 100%;
-                max-height: 210px;
+                width: min(680px, 88vw);
+                max-height: 68vh;
                 object-fit: contain;
-                margin-bottom: 8px;
+                margin-bottom: 16px;
             }}
             .ostb-result-status {{
                 color: {accent};
-                font-size: 1.18rem;
+                font-size: 2rem;
                 font-weight: 800;
                 line-height: 1.1;
-                margin: 0 0 4px 0;
+                margin: 0 0 8px 0;
                 letter-spacing: 0;
             }}
             .ostb-result-reason {{
                 margin: 0;
-                font-size: 0.76rem;
+                font-size: 0.98rem;
                 line-height: 1.35;
             }}
             .ostb-particle {{
@@ -4399,14 +4398,10 @@ def render_standard_check_overlay(tolerance_report: Dict[str, object]) -> None:
             }}
             @media (max-width: 640px) {{
                 .ostb-result-overlay {{
-                    justify-content: center;
-                    padding: 10px;
-                }}
-                .ostb-result-modal {{
-                    width: min(260px, calc(100vw - 20px));
+                    padding: 16px;
                 }}
                 .ostb-result-modal img {{
-                    max-height: 150px;
+                    max-height: 58vh;
                 }}
             }}
         </style>
